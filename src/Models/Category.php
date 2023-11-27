@@ -1,6 +1,6 @@
 <?php
 
-namespace ArtinCMS\LFM\Models;
+namespace Hamahang\LFM\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -22,7 +22,7 @@ class Category extends Model
      */
     public function files()
     {
-        return $this->hasMany('ArtinCMS\LFM\Models\File');
+        return $this->hasMany('Hamahang\LFM\Models\File');
     }
 
     public function user()
@@ -50,13 +50,13 @@ class Category extends Model
 
     public function child_categories()
     {
-        return $this->hasMany('ArtinCMS\LFM\Models\Category', 'parent_category_id', 'id');
+        return $this->hasMany('Hamahang\LFM\Models\Category', 'parent_category_id', 'id');
     }
 
 
     public function parent_category()
     {
-        return $this->belongsTo('ArtinCMS\LFM\Models\Category', 'parent_category_id', 'id');
+        return $this->belongsTo('Hamahang\LFM\Models\Category', 'parent_category_id', 'id');
     }
 
     public static function all_parents($id)

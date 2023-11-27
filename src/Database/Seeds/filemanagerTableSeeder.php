@@ -1,5 +1,5 @@
 <?php
-namespace ArtinCMS\LFM\Database\Seeds;
+namespace Hamahang\LFM\Database\Seeds;
 
 use Illuminate\Database\Seeder;
 

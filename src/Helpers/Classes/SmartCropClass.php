@@ -1,6 +1,6 @@
 <?php
 
-namespace ArtinCMS\LFM\Helpers\Classes;
+namespace Hamahang\LFM\Helpers\Classes;
 
 class SmartCropClass
 {

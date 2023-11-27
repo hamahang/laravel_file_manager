@@ -1,11 +1,11 @@
 <?php
 
-namespace ArtinCMS\LFM\Controllers;
+namespace Hamahang\LFM\Controllers;
 
-use ArtinCMS\LFM\Helpers\Classes\Media;
-use ArtinCMS\LFM\Models\File;
-use ArtinCMS\LFM\Models\FileMimeType;
-use ArtinCMS\LFM\Requests\DirectUploadFile;
+use Hamahang\LFM\Helpers\Classes\Media;
+use Hamahang\LFM\Models\File;
+use Hamahang\LFM\Models\FileMimeType;
+use Hamahang\LFM\Requests\DirectUploadFile;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 

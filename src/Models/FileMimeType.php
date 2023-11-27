@@ -1,5 +1,5 @@
 <?php
-namespace ArtinCMS\LFM\Models;
+namespace Hamahang\LFM\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 

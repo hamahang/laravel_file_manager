@@ -9,7 +9,7 @@ function LFM_SetSessionOption($section, $option)
     {
         foreach ($option['true_file_extension'] as $ext)
         {
-            $MimeType = ArtinCMS\LFM\Models\FileMimeType::where('ext', '=', $ext)->first();
+            $MimeType = Hamahang\LFM\Models\FileMimeType::where('ext', '=', $ext)->first();
             if ($MimeType)
             {
                 $mime[] = $MimeType->mimeType;
@@ -36,7 +36,7 @@ function LFM_Sanitize($string, $force_lowercase = true, $anal = false)
 
 function LFM_SmartCropIMG($file, $options = [])
 {
-    $smartcrop = new \ArtinCMS\LFM\Helpers\Classes\SmartCropClass($file, $options);
+    $smartcrop = new \Hamahang\LFM\Helpers\Classes\SmartCropClass($file, $options);
     //Analyse the image and get the optimal crop scheme
     $res = $smartcrop->analyse();
 
@@ -87,7 +87,7 @@ function LFM_CheckMimeType($mimetype, $items)
     {
         foreach ($items as $item)
         {
-            $file = \ArtinCMS\LFM\Models\File::find(LFM_GetDecodeId($item['id']));
+            $file = \Hamahang\LFM\Models\File::find(LFM_GetDecodeId($item['id']));
             if (!in_array($file->mimeType, $mimetype))
             {
                 $result['success'] = false;
@@ -382,7 +382,7 @@ function LFM_loadSingleFile($obj_model, $column_name, $section, $column_option_n
     $view = ['list' => '', 'grid' => '', 'large' => '', 'medium' => '', 'small' => ''];
     if ($obj_model)
     {
-        $files[] = \ArtinCMS\LFM\Models\File::find($obj_model->$column_name);
+        $files[] = \Hamahang\LFM\Models\File::find($obj_model->$column_name);
         $LFM = session()->get('LFM');
         if ($files[0])
         {
@@ -462,7 +462,7 @@ function LFM_ShowingleFile($obj_model, $column_name, $column_option_name = false
     $view = ['list' => '', 'grid' => '', 'large' => '', 'medium' => '', 'small' => ''];
     if ($obj_model)
     {
-        $files[] = \ArtinCMS\LFM\Models\File::find($obj_model->$column_name);
+        $files[] = \Hamahang\LFM\Models\File::find($obj_model->$column_name);
         if (isset($files[0]))
         {
             foreach ($files as $file)
@@ -557,7 +557,7 @@ function LFM_GenerateDownloadLink($type = "ID", $id = -1, $size_type = 'original
 
 function LFM_GetBase64Image($file_id, $size_type = 'original', $not_found_img = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
 {
-    $res = \ArtinCMS\LFM\Helpers\Classes\Media::downloadById($file_id, $size_type, $not_found_img, true, $quality, $width, $height);
+    $res = \Hamahang\LFM\Helpers\Classes\Media::downloadById($file_id, $size_type, $not_found_img, true, $quality, $width, $height);
 
     return $res;
 }
@@ -594,7 +594,7 @@ function LFM_ConvertMimeTypeToExt($mimeTypes)
     $text = '';
     foreach ($mimeTypes as $mime)
     {
-        $extensions = \ArtinCMS\LFM\Models\FileMimeType::select('ext')->where('mimeType', '=', $mime)->get();
+        $extensions = \Hamahang\LFM\Models\FileMimeType::select('ext')->where('mimeType', '=', $mime)->get();
         foreach ($extensions as $ex)
         {
             $res .= "'$ex->ext',";
@@ -652,7 +652,7 @@ function LFM_GetChildCategory($array_id)
 {
     $category = [];
     $array_parent_id = [];
-    $cats = \ArtinCMS\LFM\Models\Category::all();
+    $cats = \Hamahang\LFM\Models\Category::all();
     foreach ($cats as $cat)
     {
         //get parent
@@ -660,7 +660,7 @@ function LFM_GetChildCategory($array_id)
         $parent_id = $cat->id;
         while ($parent_id != '#')
         {
-            $subcat = \ArtinCMS\LFM\Models\Category::find($parent_id);
+            $subcat = \Hamahang\LFM\Models\Category::find($parent_id);
             if (isset($subcat))
             {
                 $array_parent_id[] = $subcat->id;
@@ -681,7 +681,7 @@ function LFM_GetChildCategory($array_id)
     }
     if (in_array(0, $array_id))
     {
-        $category[] = \ArtinCMS\LFM\Models\Category::find(0);
+        $category[] = \Hamahang\LFM\Models\Category::find(0);
     }
 
     return $category;
@@ -712,7 +712,7 @@ function LFM_GeneratePublicDownloadLink($path, $filename, $type = 'original')
 function LFM_GetAllParentId($id)
 {
     $parrents_id = [];
-    $cats = \ArtinCMS\LFM\Models\Category::all_parents($id);
+    $cats = \Hamahang\LFM\Models\Category::all_parents($id);
     foreach ($cats as $cat)
     {
         $parrents_id[] = $cat->id;
@@ -727,7 +727,7 @@ function LFM_GetFoolderPath($id, $cat_name = 'undefined', $file_name = false)
     $path = '';
     while ($id != 0)
     {
-        $cat = \ArtinCMS\LFM\Models\Category::with('parent_category')->find($id);
+        $cat = \Hamahang\LFM\Models\Category::with('parent_category')->find($id);
         if ($id == -2 || $id == -1)
         {
             $id = 0;
@@ -798,7 +798,7 @@ function LFM_checkCatSeed()
     $category_id = [-2, -1, 0, -5];
     foreach ($category_id as $cat_id)
     {
-        $res = \ArtinCMS\LFM\Models\Category::find($cat_id);
+        $res = \Hamahang\LFM\Models\Category::find($cat_id);
         if (!$res)
         {
             $html = '<h4>' . __('filemanager.please_run_seed_at_first') . '</h4><br/> ';
@@ -811,7 +811,7 @@ function LFM_checkCatSeed()
                 $html .= '<div>';
             }
             $html .= '<pre style="padding: 16px;overflow: auto;font-size: 85%;line-height: 1.45;background-color: #f6f8fa;border-radius: 3px;">  
-                            php artisan db:seed --class="ArtinCMS\LFM\Database\Seeds\LFM_CategoryTableSeeder"
+                            php artisan db:seed --class="Hamahang\LFM\Database\Seeds\LFM_CategoryTableSeeder"
                         </pre>
                     </div>';
 
@@ -830,7 +830,7 @@ function LFM_checkCatSeed()
 
 function LFM_checkMymeTypeSeed()
 {
-    $mimetypes = \ArtinCMS\LFM\Models\FileMimeType::all();
+    $mimetypes = \Hamahang\LFM\Models\FileMimeType::all();
     if (count($mimetypes) < 685)
     {
         $html = '<h4>' . __('filemanager.please_run_seed_at_first') . '</h4><br/> ';
@@ -843,7 +843,7 @@ function LFM_checkMymeTypeSeed()
             $html .= '<div>';
         }
         $html .= '<pre style="padding: 16px;overflow: auto;font-size: 85%;line-height: 1.45;background-color: #f6f8fa;border-radius: 3px;">  
-                            php artisan db:seed --class="ArtinCMS\LFM\Database\Seeds\LFM_MimeTypeTableSeeder"
+                            php artisan db:seed --class="Hamahang\LFM\Database\Seeds\LFM_MimeTypeTableSeeder"
                         </pre>
                     </div>';
 
@@ -884,7 +884,7 @@ function LFM_checkSeed()
                 $html .= '<div>';
             }
             $html .= '<pre style="padding: 16px;overflow: auto;font-size: 85%;line-height: 1.45;background-color: #f6f8fa;border-radius: 3px;">  
-                            php artisan db:seed --class="ArtinCMS\LFM\Database\Seeds\FilemanagerTableSeeder"
+                            php artisan db:seed --class="Hamahang\LFM\Database\Seeds\FilemanagerTableSeeder"
                         </pre>
                     </div>';
 
@@ -1129,7 +1129,7 @@ function LFM_GetDecodeId($id, $route = false)
 
 function LFM_uploadFile($file, $CustomUid = false, $CategoryID, $FileMimeType, $original_name)
 {
-    \ArtinCMS\LFM\Helpers\Classes\Media::upload($file, $CustomUid = false, $CategoryID, $FileMimeType, $original_name);
+    \Hamahang\LFM\Helpers\Classes\Media::upload($file, $CustomUid = false, $CategoryID, $FileMimeType, $original_name);
 }
 
 function LFM_Date_GtoJ($GDate = null, $Format = "Y/m/d-H:i", $convert = true)
@@ -1138,7 +1138,7 @@ function LFM_Date_GtoJ($GDate = null, $Format = "Y/m/d-H:i", $convert = true)
     {
         return '--/--/----';
     }
-    $date = new ArtinCMS\LFM\Helpers\Classes\jDateTime($convert, true, 'Asia/Tehran');
+    $date = new Hamahang\LFM\Helpers\Classes\jDateTime($convert, true, 'Asia/Tehran');
     $time = is_numeric($GDate) ? strtotime(date('Y-m-d H:i:s', $GDate)) : strtotime($GDate);
 
     return $date->date($Format, $time);
@@ -1148,8 +1148,8 @@ function LFM_Date_GtoJ($GDate = null, $Format = "Y/m/d-H:i", $convert = true)
 function LFM_Date_JtoG($jDate, $delimiter = '/', $to_string = false, $with_time = false, $input_format = 'Y/m/d H:i:s')
 {
     $jDate = ConvertNumbersFatoEn($jDate);
-    $parseDateTime = ArtinCMS\LFM\Helpers\Classes\jDateTime::parseFromFormat($input_format, $jDate);
-    $r = ArtinCMS\LFM\Helpers\Classes\jDateTime::toGregorian($parseDateTime['year'], $parseDateTime['month'], $parseDateTime['day']);
+    $parseDateTime = Hamahang\LFM\Helpers\Classes\jDateTime::parseFromFormat($input_format, $jDate);
+    $r = Hamahang\LFM\Helpers\Classes\jDateTime::toGregorian($parseDateTime['year'], $parseDateTime['month'], $parseDateTime['day']);
     if ($to_string)
     {
         if ($with_time)

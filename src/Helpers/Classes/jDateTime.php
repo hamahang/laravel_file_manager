@@ -1,6 +1,6 @@
 <?php
 
-namespace ArtinCMS\LFM\Helpers\Classes;
+namespace Hamahang\LFM\Helpers\Classes;
 /**
  * Jalali (Shamsi) DateTime Class. Supports years higher than 2038.
  *

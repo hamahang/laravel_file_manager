@@ -1,17 +1,21 @@
 {
-    "name": "artincms/laravel_file_manager",
-    "description": "Official ArtinCMS.com Laravel File Manager Package",
-    "keywords": ["laravel", "ArtinCMS", "مدیریت فایل", "مدیا منیجر", "media manager", "storage", "artincms.com","آرتین سی ام اس"],
+    "name": "hamahang/laravel_file_manager",
+    "description": "Laravel File Manager Package - hamahang-co.ir",
+    "keywords": ["laravel", "Hamahang", "مدیریت فایل", "مدیا منیجر", "media manager", "storage", "hamahang.com"],
     "license": "MIT",
     "authors": [
         {
             "name": "Adel.Raheli",
             "email": "adel.raheli@gmail.com"
+        },
+        {
+            "name": "Mostafa Sharafi",
+            "email": "mostafasharafi.dev@gmail.com"
         }
     ],
     "autoload": {
         "psr-4": {
-            "ArtinCMS\\LFM\\": "src/"
+            "Hamahang\\LFM\\": "src/"
         },
         "files": [
             "src/Helpers/Functions/FileManager.php"
@@ -25,7 +29,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "ArtinCMS\\LFM\\LFMServiceProvider"
+                "Hamahang\\LFM\\LFMServiceProvider"
             ]
         }
     }

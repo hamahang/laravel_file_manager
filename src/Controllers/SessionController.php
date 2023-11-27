@@ -1,9 +1,9 @@
 <?php
 
-namespace ArtinCMS\LFM\Controllers;
+namespace Hamahang\LFM\Controllers;
 
 use Illuminate\Http\Request;
-use ArtinCMS\LFM\Models\File;
+use Hamahang\LFM\Models\File;
 
 class SessionController extends ManagerController
 {

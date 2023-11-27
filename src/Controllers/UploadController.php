@@ -1,10 +1,10 @@
 <?php
 
-namespace ArtinCMS\LFM\Controllers;
+namespace Hamahang\LFM\Controllers;
 
 use Illuminate\Http\Request;
-use ArtinCMS\LFM\Models\FileMimeType;
-use ArtinCMS\LFM\Helpers\Classes\Media;
+use Hamahang\LFM\Models\FileMimeType;
+use Hamahang\LFM\Helpers\Classes\Media;
 use Illuminate\Routing\Route;
 use Mockery\Exception;
 
@@ -32,7 +32,7 @@ class UploadController extends ManagerController
         return view('laravel_file_manager::upload.upload', compact('category_id', 'callback', 'options', 'section'));
     }
 
-    public function storeUploads(\ArtinCMS\LFM\Requests\UploadFile $request)
+    public function storeUploads(\Hamahang\LFM\Requests\UploadFile $request)
     {
         {
             $CategoryID = LFM_GetDecodeId($request->category_id);

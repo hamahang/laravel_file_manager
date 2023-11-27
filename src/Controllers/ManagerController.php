@@ -1,11 +1,11 @@
 <?php
 
-namespace ArtinCMS\LFM\Controllers;
+namespace Hamahang\LFM\Controllers;
 
 use Illuminate\Http\Request;
-use ArtinCMS\LFM\Models\File;
-use ArtinCMS\LFM\Models\Category;
-use ArtinCMS\LFM\Helpers\Classes\Media;
+use Hamahang\LFM\Models\File;
+use Hamahang\LFM\Models\Category;
+use Hamahang\LFM\Helpers\Classes\Media;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;

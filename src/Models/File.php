@@ -1,6 +1,6 @@
 <?php
 
-namespace ArtinCMS\LFM\Models;
+namespace Hamahang\LFM\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,12 +19,12 @@ class File extends Model
 
     public function category()
     {
-        return $this->belongsTo('ArtinCMS\LFM\Models\Category');
+        return $this->belongsTo('Hamahang\LFM\Models\Category');
     }
 
     public function FileMimeType()
     {
-        return $this->belongsTo('ArtinCMS\LFM\Models\FileMimeType', 'file_mime_type_id');
+        return $this->belongsTo('Hamahang\LFM\Models\FileMimeType', 'file_mime_type_id');
     }
 
     /**

@@ -1,5 +1,5 @@
 <?php
-Route::group(['prefix' => config('laravel_file_manager.private_route_prefix'), 'namespace' => 'ArtinCMS\LFM\Controllers', 'middleware' => config('laravel_file_manager.private_middlewares')], function () {
+Route::group(['prefix' => config('laravel_file_manager.private_route_prefix'), 'namespace' => 'Hamahang\LFM\Controllers', 'middleware' => config('laravel_file_manager.private_middlewares')], function () {
     //show routes
     Route::get('ShowCategories/{insert?}/{callback?}/{section?}', ['as' => 'LFM.ShowCategories', 'uses' => 'ManagerController@showCategories']);
     Route::get('ShowCategories/create/{category_id?}/{callback?}/{section?}', ['as' => 'LFM.ShowCategories.Create', 'uses' => 'ManagerController@createCategory']);
@@ -43,14 +43,14 @@ Route::group(['prefix' => config('laravel_file_manager.private_route_prefix'), '
     Route::post('CreateInsertData', ['as' => 'LFM.CreateInsertData', 'uses' => 'SessionController@createInsertData']);
 });
 
-Route::group(['prefix' => config('laravel_file_manager.private_route_prefix'), 'namespace' => 'ArtinCMS\LFM\Controllers', 'middleware' => config('laravel_file_manager.session_middlewares')], function () {
+Route::group(['prefix' => config('laravel_file_manager.private_route_prefix'), 'namespace' => 'Hamahang\LFM\Controllers', 'middleware' => config('laravel_file_manager.session_middlewares')], function () {
     //session
     Route::post('GetSessionInsertedItems}', ['as' => 'LFM.GetSession', 'uses' => 'SessionController@getSessionInsertedItems']);
     Route::get('GetSession/{section}', ['as' => 'LFM.GetSession', 'uses' => 'SessionController@getSession']);
     Route::post('DeleteSessionInsertItem', ['as' => 'LFM.DeleteSessionInsertItem', 'uses' => 'SessionController@deleteSessionInsertItem']);
 });
 
-Route::group(['prefix' => config('laravel_file_manager.upload_route_prefix'), 'namespace' => 'ArtinCMS\LFM\Controllers', 'middleware' => config('laravel_file_manager.upload_middlewares')], function () {
+Route::group(['prefix' => config('laravel_file_manager.upload_route_prefix'), 'namespace' => 'Hamahang\LFM\Controllers', 'middleware' => config('laravel_file_manager.upload_middlewares')], function () {
     Route::get('DirectUpload/{section?}/{callback?}', ['as' => 'LFM.DirectUpload', 'uses' => 'DirectUploadController@directUpload']);
     Route::post('StoreDirectUploads', ['as' => 'LFM.StoreDirectUploads', 'uses' => 'DirectUploadController@storeDirectUploads'])->middleware('throttle:10,1');
 });

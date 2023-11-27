@@ -1,11 +1,11 @@
 <?php
 
-namespace ArtinCMS\LFM\Helpers\Classes;
+namespace Hamahang\LFM\Helpers\Classes;
 
 use Hashids\Hashids;
-use ArtinCMS\LFM\Models\File;
-use ArtinCMS\LFM\Models\Category;
-use ArtinCMS\LFM\Models\FileMimeType;
+use Hamahang\LFM\Models\File;
+use Hamahang\LFM\Models\Category;
+use Hamahang\LFM\Models\FileMimeType;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
@@ -306,7 +306,7 @@ class Media
         $temp_path_directory = \Storage::disk(config('laravel_file_manager.driver_disk'))->path(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder');
         $file = File::find(LFM_GetDecodeId($file_id));
         $not_found_img_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path(config('laravel_file_manager.main_storage_folder_name') . '/System/' . $not_found_img);
-        $not_found_default_img_path = base_path('vendor/artincms/laravel_file_manager/src/Storage/SystemFiles/404.png');
+        $not_found_default_img_path = base_path('vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png');
         //check database for check file exist
         if ($file)
         {

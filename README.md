@@ -29,30 +29,30 @@ Laravel 5.5|5.6
 
 # Installation
 <h3>Quick installation</h3> 
-<div class="highlight highlight-source-shell"><pre>composer require "artincms/laravel_file_manager"</pre></div>
+<div class="highlight highlight-source-shell"><pre>composer require "hamahang/laravel_file_manager"</pre></div>
 <h5>for laravel less than 5.5</h5>
 Register provider and facade on your config/app.php file.
 <div class="highlight highlight-text-html-php"><pre>
 'providers' => [
     ...,
-    ArtinCMS\LFM\LFMServiceProvider::class,
+    Hamahang\LFM\LFMServiceProvider::class,
 ]
 </pre>
 <pre>
 'aliases' => [
     ...,
-    'FileManager' => ArtinCMS\LFM\Facades\FileManager::class,
+    'FileManager' => Hamahang\LFM\Facades\FileManager::class,
 ]
 </pre></div>
  
  
 <h6>publish vendor</h6>
  <div class="highlight highlight-text-html-php"><pre>
- $ php artisan vendor:publish --provider="ArtinCMS\LFM\LFMServiceProvider"
+ $ php artisan vendor:publish --provider="Hamahang\LFM\LFMServiceProvider"
 </pre> </div>
 if update package for publish vendor you should run : 
  <div class="highlight highlight-text-html-php"><pre>
- $ php artisan vendor:publish --provider="ArtinCMS\LFM\LFMServiceProvider" --force
+ $ php artisan vendor:publish --provider="Hamahang\LFM\LFMServiceProvider" --force
 </pre> </div>
  <h6>migrate tabales</h6>
   <div class="highlight highlight-text-html-php"><pre>
@@ -60,7 +60,7 @@ if update package for publish vendor you should run :
   </pre> </div>
 <h6>seed data to lfm_file_mime_type table</h6>
  <div class="highlight highlight-text-html-php"><pre>
-  php artisan db:seed --class="ArtinCMS\LFM\Database\Seeds\FilemanagerTableSeeder"
+  php artisan db:seed --class="Hamahang\LFM\Database\Seeds\FilemanagerTableSeeder"
   </pre> </div>
   <h4>more installation details</h4>
   <p>The package will use these optimizers if they are present on your system:</p>
@@ -197,7 +197,7 @@ inserted view is : list,grid,small,medium,large
  <div class="highlight highlight-text-html-php-blade"><pre>
    public function files()
    {
-          return $this->morphToMany('ArtinCMS\LFM\Models\File' , 'fileable','lfm_fileables','fileable_id','file_id')->withPivot('type')->withTimestamps() ;
+          return $this->morphToMany('Hamahang\LFM\Models\File' , 'fileable','lfm_fileables','fileable_id','file_id')->withPivot('type')->withTimestamps() ;
    }
  </pre> </div>
  you can use this trait or create your morph relation .
@@ -310,8 +310,8 @@ THe full Example :
 </pre> </div>
 you should define your relation in article models :
 <div class="highlight highlight-text-html-php-blade"><pre>
-use ArtinCMS\LFM\Traits\lfmFillable ;
-use ArtinCMS\LFM\Models\File;
+use Hamahang\LFM\Traits\lfmFillable ;
+use Hamahang\LFM\Models\File;
 class Article extends Model
 {
     use lfmFillable;

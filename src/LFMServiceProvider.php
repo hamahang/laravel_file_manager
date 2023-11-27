@@ -1,8 +1,8 @@
 <?php
 
-namespace ArtinCMS\LFM;
+namespace Hamahang\LFM;
 
-use ArtinCMS\LFM\Helpers\Classes\Media;
+use Hamahang\LFM\Helpers\Classes\Media;
 use Illuminate\Support\ServiceProvider;
 
 class LFMServiceProvider extends ServiceProvider
