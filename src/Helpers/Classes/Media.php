@@ -340,7 +340,7 @@ class Media
             $relative_tmp_path = config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder/' . $file_name_hash;
             $tmp_path = $base_path . $relative_tmp_path;
             $file_EXT = FileMimeType::where('mimeType', '=', $file->mimeType)->firstOrFail()->ext;
-            $headers = ["Content-Type:{$file->mimeType}"];
+            $headers = ["Content-Type"=>$file->mimeType,"Cache-Control"=>"public","max-age"=>31536000];
 
             //check if exist in tmp folder
             if (\Storage::disk(config('laravel_file_manager.driver_disk'))->has($relative_tmp_path))
@@ -414,6 +414,9 @@ class Media
                         $not_found_ext = pathinfo($not_found_img_path, PATHINFO_EXTENSION);
                         $ext = ($not_found_ext != '') ? $not_found_ext : 'jpg';
                         $res = Image::make($not_found_img_path)->fit((int)$width, (int)$height)->response($ext, $quality);
+                        $res->headers->set('Content-Type',"image/jpeg");
+                        $res->headers->set('Cache-Control','public');
+                        $res->headers->set('max-age',31536000);
                     }
                     else
                     {
