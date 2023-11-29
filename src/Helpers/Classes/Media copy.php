@@ -10,10 +10,9 @@ use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 class Media
 {
-    const LFM_DRIVER_DISK = 'laravel_file_manager.driver_disk';
-    const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
-    const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
-    const LFM_404_DEFAULT = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
+
+    const MAIN_STORAGE_PATH = 'laravel_file_manager.main_storage_folder_name';
+    const PATH_DEFAULT_404 = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
 
     static function get_file_content($not_found_default_img_path, $type = 'png', $text = '404', $bg = 'CC0099', $color = 'FFFFFF', $width = '640', $height = '480')
     {
@@ -302,126 +301,125 @@ class Media
         return $name;
     }
 
-    public static function downloadById($fileId, $size_type = 'original', $not_found_img = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
+    public static function downloadById($file_id, $size_type = 'original', $not_found_img = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
     {
-        $driverDiskStorage  = \Storage::disk(config(self::LFM_DRIVER_DISK));
+        $fileManagerStorage         = self::fileManagerStorage();
 
-        // define some needed paths
-        $mediaTempFolderPath = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
-        $not_found_img_path = $driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/System/' . $not_found_img);
-        $not_found_default_img_path = base_path(LFM_404_DEFAULT);
+        $basePath                   = $fileManagerStorage->path('');
+        $mediaTempFolderPath        = $fileManagerStorage->path(config(self::MAIN_STORAGE_PATH) . '/media_tmp_folder');
+        $notFoundImagePath          = $fileManagerStorage->path(config(self::MAIN_STORAGE_PATH) . '/System/' . $not_found_img);
+        $notFoundImagePathDefault   = base_path(self::PATH_DEFAULT_404);
         
-        // find file if exists
-        $file = File::find(LFM_GetDecodeId($fileId));
+        $fileData = File::find(LFM_GetDecodeId($file_id));
 
-        // file not found action
-        if (!$file) {
+        // file not found
+        if (!$fileData)
+        {
+            $res = file_exists($notFoundImagePath) ? 
+                self::makeImage($notFoundImagePath, $quality, $width, $height) :
+                self::get_file_content($notFoundImagePathDefault, 'png', '404', 'cecece', 'FFFFFF', $width, $height);
 
-            // if $not_found_img is not found 
-            // then make copy from defualt image
-            if (!file_exists($not_found_img_path)){
-                $res = $width || $height ? 
-                    self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF', $width, $height) :
-                    self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF');
-            }else{
-                // make a copy of $not_found_img with desired width, height and quality
-                $res = Image::make($not_found_img_path);
-                if ($width || $height){
-                    $res->fit((int)$width, (int)$height);
-                }
-                $res = $res->response(self::extractFileExtension($not_found_img_path), $quality);
-            }
-
-            return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
+            return self::returnFile($res, $inline_content);
         }
 
-        $isDirect = $file->is_direct == '1';
-        $fileName = $file->filename;
-        $filePath = $isDirect ? 
-            "{$file->path}{$fileName}" : 
-            "{$file->path}/files/{$size_type}/".($size_type != 'original' ? $file[ $size_type . '_filename' ] : $fileName);
-        $fileId = $file->id;
-        $fileMimeType = $file->mimeType;
-        $fileOriginalName = $file->original_name;
-        $config = $isDirect ? config(self::LFM_DRIVER_DISK_UPLOAD) : config(self::LFM_DRIVER_DISK);
-        $base_path = \Storage::disk($config)->path('');
-        $file_name_hash = self::hashFileName($driverDiskStorage, $filePath, $fileId, $size_type, $not_found_img, $inline_content, $quality, $width, $height);
-        $relative_tmp_path =  "{$mediaTempFolderPath}/{$file_name_hash}";
-        $tmp_path = $base_path . $relative_tmp_path;
-        $file_EXT = strtolower(FileMimeType::where('mimeType', '=', $fileMimeType)->firstOrFail()->ext);
-        $headers = ["Content-Type"=>$fileMimeType,"Cache-Control"=>"public","max-age"=>31536000];
+        if ($fileData->is_direct == '1')
+        {
+            $config = config('laravel_file_manager.driver_disk_upload');
+            $basePath = \Storage::disk($config)->path('');
+            $file_path = $fileData->path . $fileData->filename;
+        }
+        else
+        {
+            $config = config('laravel_file_manager.driver_disk');
+            $filename = $size_type != 'original' ? $fileData[ $size_type . '_filename' ] : $fileData->filename;
+            $file_path = $fileData->path . '/files/' . $size_type . '/' . $filename;
+        }
+
+        $md5FilePath  = $fileManagerStorage->has($file_path) ? md5($fileManagerStorage->get($file_path)) : '';
+        $fileHashName = self::fileNameHash($md5FilePath, $fileData->id, $size_type, $not_found_img, $inline_content, $quality, $width, $height);
+        $media_tmp_folder = config(self::MAIN_STORAGE_PATH) . '/media_tmp_folder/' ;
+        $relative_tmp_path =  $media_tmp_folder. $fileHashName;
+        $tmp_path = $basePath . $relative_tmp_path;
+        $fileExtension = FileMimeType::where('mimeType', '=', $fileData->mimeType)->firstOrFail()->ext;
+        $headers = ["Content-Type"=>$fileData->mimeType,"Cache-Control"=>"public","max-age"=>31536000];
 
         //check if exist in tmp folder
-        if ($driverDiskStorage->has($relative_tmp_path))
+        if ($fileManagerStorage->has($relative_tmp_path))
         {
-            if (!$inline_content)
+            if ($inline_content)
             {
-                return response()->download($tmp_path, $fileOriginalName . '.' . $file_EXT, $headers);
+                $base64 = self::base64ImageContent(file_get_contents($basePath . $file_path), str_replace('.', '', $fileExtension));
+                file_put_contents($tmp_path, $base64);
+                return $base64;
             }
 
-            $res = self::base64ImageContent(file_get_contents($base_path . $filePath), str_replace('.', '', $file_EXT));
-            file_put_contents($tmp_path, $res);
-            return $res;
+            return response()->download($tmp_path, $fileData->original_name . '.' . $fileExtension, $headers);
         }
 
-        self::makePathIfNotExists($driverDiskStorage, $mediaTempFolderPath);
+
+        self::createPathIfNotExists($fileManagerStorage, $mediaTempFolderPath);
 
         //check local storage for check file exist
-        if (\Storage::disk($config)->has($filePath))
+        if (\Storage::disk($config)->has($file_path))
         {
-            $file_base_path = $base_path . $filePath;
+            $file_base_path = $basePath . $file_path;
 
-            if (!in_array($file_EXT, ['png', 'jpg', 'jpeg'])){
-                return response()->download($file_base_path, $fileName . '.' . $file_EXT, $headers);
+            if (!in_array(strtolower($fileExtension), ['png', 'jpg', 'jpeg'])){
+                return response()->download($file_base_path, $fileData->filename . '.' . $fileExtension, $headers);
             }
 
-
-            $res = Image::make($file_base_path);
-                
             if ($width && $height)
             {
-                $res = $res->fit((int)$width, (int)$height);
-                $res->save($tmp_path);
-                $res = $res->response($file_EXT, (int)$quality);
-            }else{
-                $fileExt = $quality < 100 ? 'jpg' : $file_EXT;
-                $res->save($tmp_path);
-                $res = $res->response($fileExt, (int)$quality);
+                $res = Image::make($file_base_path)
+                    ->fit((int)$width, (int)$height)
+                    ->save($tmp_path)
+                    ->response($fileExtension, (int)$quality);
+            }
+            else
+            {
+                $fileExtension = $quality < 100 ? 'jpg' : '';
+
+                $res = Image::make($file_base_path)
+                    ->save($tmp_path)
+                    ->response($fileExtension, (int)$quality);
             }
 
-            return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
-
+            return self::returnFile($res, $inline_content);
         }
+
 
         $width = $width ? $width : '640';
         $height = $height ? $height : '400';
 
-        if (!file_exists($not_found_img_path)){
-            $res = self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF', $width, $height);
-            return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
+        if (!file_exists($notFoundImagePath)){
+            
+            $res = self::get_file_content($notFoundImagePathDefault, 'png', '404', 'cecece', 'FFFFFF', $width, $height);
+
+            return self::returnFile($res, $inline_content);
         }
 
-        $ext = self::extractFileExtension($not_found_img_path, 'jpg');
 
-        $not_found_hash = "{$ext}_{$quality}_{$width}_{$height}";
 
-        $relative_not_found_tmp_path = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder/' . $not_found_hash;
+        $not_found_ext = pathinfo($notFoundImagePath, PATHINFO_EXTENSION);
+        $ext = ($not_found_ext != '') ? $not_found_ext : 'jpg';
+        $file_ext_without_dot = str_replace('.'.$ext, '', $not_found_img);
+        $not_found_hash = $file_ext_without_dot . '_' . $quality . '_' . $width . '_' . $height;
+        $relative_not_found_tmp_path = config(self::MAIN_STORAGE_PATH) . '/media_tmp_folder/' . $not_found_hash;
+        $relative_tmp_path =  $media_tmp_folder. $not_found_hash;
+        $tmp_path = $basePath . $relative_tmp_path;
 
-        $relative_tmp_path =  "{$mediaTempFolderPath}/{$not_found_hash}";
-
-        $tmp_path = $base_path . $relative_tmp_path;
-
-        if (!$driverDiskStorage->has($relative_not_found_tmp_path))
+        if (!$fileManagerStorage->has($relative_not_found_tmp_path))
         {
-            $res = Image::make($not_found_img_path)->fit((int)$width, (int)$height)->save($tmp_path);
+            $res = Image::make($notFoundImagePath)->fit((int)$width, (int)$height)->save($tmp_path);
         }
 
         if (!isset($res))
         {
             $res = response()->download($tmp_path, $not_found_hash . '.' . $ext, $headers);
         }
+    
 
-        return $res;
+        return self::returnFile($res, $inline_content);
     }
 
     public static function downloadByName($FileName, $not_found_img = '404.png', $size_type = 'original', $inline_content = false, $quality = 90, $width = false, $height = False)
@@ -569,30 +567,43 @@ class Media
         return $result;
     }
 
-    public static function base64ImageContent($content, $extension)
-    {
-        $base64Content = base64_encode($content);
-        return "data:image/{$extension};base64,{$base64Content}";
+    public static function fileManagerStorage(){
+        return \Storage::disk(config('laravel_file_manager.driver_disk'));
     }
 
-    public static function extractFileExtension($filePath, $defaultExtension = 'jpg')
+    public static function makeImage($imagePath, $quality, $width=false, $height=false)
     {
-        $fileExtension = pathinfo($filePath, PATHINFO_EXTENSION);
-        return $fileExtension != ''? $fileExtension : $defaultExtension;
+        $imagePath = pathinfo($imagePath, PATHINFO_EXTENSION);
+        $fileExtensio = ($imagePath != '') ? $imagePath : 'jpg';
+        if ($width || $height){
+            return Image::make($imagePath)->fit((int)$width, (int)$height)->response($fileExtensio, $quality);
+        }else{
+            return Image::make($imagePath)->response($fileExtensio, $quality);
+        }
     }
 
-    public static function hashFileName($storage, $filePath, $fileId, $sizeType, $notFoundImage, $inlineContent, $quality, $width, $height)
+    public static function base64ImageContent($imageContent, $extension='jpg')
     {
-        $md5File = $storage->has($filePath) ? md5($storage->get($filePath)) : '';
-        $hash = md5("{$sizeType}_{$notFoundImage}_{$inlineContent}_{$quality}_{$width}_{$height}_{$md5File}");
-        return "tmp_fid_{$fileId}_{$hash}";
+        return 'data:image/' . $extension . ';base64,' . base64_encode($imageContent);
     }
 
-    public static function makePathIfNotExists($storage, $path)
+    public static function createPathIfNotExists($storage, $path)
     {
-        if (!is_dir($storage->path($path)))
-        {
+        if (!is_dir($path)){
             $storage->makeDirectory($path);
         }
+    }
+
+    public static function fileNameHash($md5FilePath, $fileid, $sizeType, $notFoundImage, $inlineContent, $quality, $width, $height)
+    {
+        $hash = md5("{$sizeType}_{$notFoundImage}_{$inlineContent}_{$quality}_{$width}_{$height}_{$md5FilePath}");
+        return "tmp_fid_{$fileid}_{$hash}";
+    }
+
+    public static function returnFile($response, $inlineContent)
+    {
+        return $inlineContent ? 
+            self::base64ImageContent($response->getContent()) : 
+            $response;
     }
 }
