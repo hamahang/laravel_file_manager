@@ -10,68 +10,58 @@ use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 class Media
 {
+    // ---- Constants Section ---- //
     const LFM_DRIVER_DISK = 'laravel_file_manager.driver_disk';
     const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
     const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
     const LFM_404_DEFAULT = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
+    const IRANSANSWEB_FONT ='/../../assets/fonts/IranSans/ttf/IRANSansWeb.ttf';
 
-    static function get_file_content($not_found_default_img_path, $type = 'png', $text = '404', $bg = 'CC0099', $color = 'FFFFFF', $width = '640', $height = '480')
+    // ---- Static Needed Variables ---- //
+    static $imageTypesList = ['png', 'gif', 'jpg'];
+    static $filterOptions = [ 'options' => [ 'min_range' => 0, 'max_range' => 9999 ] ];
+
+    static function makeImage($imgWidth = '640', $imgHeight = '480', $imageType = 'png', $text = '404', $backgroundColor = 'CC0099', $textColor = 'FFFFFF')
     {
-        $size = $width . 'x' . $height;
-        list($imgWidth, $imgHeight) = explode('x', $size . 'x');
-        if ($imgHeight === '')
-        {
-            $imgHeight = $imgWidth;
-        }
-        $filterOptions = [
-            'options' => [
-                'min_range' => 0,
-                'max_range' => 9999
-            ]
-        ];
-        if (filter_var($imgWidth, FILTER_VALIDATE_INT, $filterOptions) === false)
-        {
-            $imgWidth = '640';
-        }
-        if (filter_var($imgHeight, FILTER_VALIDATE_INT, $filterOptions) === false)
-        {
-            $imgHeight = '480';
-        }
-        $encoding = mb_detect_encoding($text, 'UTF-8, ISO-8859-1');
-        if ($encoding !== 'UTF-8')
-        {
-            $text = mb_convert_encoding($text, 'UTF-8', $encoding);
-        }
-        $text = mb_encode_numericentity($text,
-            [0x0, 0xffff, 0, 0xffff],
-            'UTF-8');
-        /**
-         * Handle the “bg” parameter.
-         */
-        list($bgRed, $bgGreen, $bgBlue) = sscanf($bg, "%02x%02x%02x");
+        // prepare image type 
+        $imageType = strtolower($imageType);
+        $imageType = in_array($imageType, self::$imageTypesList) ? $imageType : 'jpg';
 
-        list($colorRed, $colorGreen, $colorBlue) = sscanf($color, "%02x%02x%02x");
-        /**
-         * Define the typeface settings.
-         */
-        $fontFile = realpath(__DIR__) . DIRECTORY_SEPARATOR . '/../../assets/fonts/IranSans/ttf/IRANSansWeb.ttf';
-        if (!is_readable($fontFile))
-        {
-            $fontFile = 'arial';
-        }
+        // image width and height must be in valid range and number
+        $imgWidth   = filter_var($imgWidth,  FILTER_VALIDATE_INT, self::$filterOptions) ? $imgWidth  : '640';
+        $imgHeight  = filter_var($imgHeight, FILTER_VALIDATE_INT, self::$filterOptions) ? $imgHeight : '480';
+
+        // convert encoding of text 
+        $text = mb_convert_encoding($text, 'UTF-8', mb_detect_encoding($text, 'UTF-8, ISO-8859-1'));
+        $text = mb_encode_numericentity($text, [0x0, 0xffff, 0, 0xffff], 'UTF-8');
+
+        // dispatch text and background color
+        list($bgRed, $bgGreen, $bgBlue)             = sscanf($backgroundColor, "%02x%02x%02x");
+        list($colorRed, $colorGreen, $colorBlue)    = sscanf($textColor, "%02x%02x%02x");
+
+        // use IRANSansWeb Font if exists or arial
+        $fontFile = realpath(__DIR__) . self::IRANSANSWEB_FONT;
+        $fontFile = !is_readable($fontFile) ? 'arial' : $fontFile;
+
+        // prepare font size
         $fontSize = round(($imgWidth - 50) / 8);
-        if ($fontSize <= 9)
-        {
-            $fontSize = 9;
-        }
-        /**
-         * Generate the image.
-         */
-        $image = imagecreatetruecolor($imgWidth, $imgHeight);
-        $colorFill = imagecolorallocate($image, $colorRed, $colorGreen, $colorBlue);
-        $bgFill = imagecolorallocate($image, $bgRed, $bgGreen, $bgBlue);
+        $fontSize = $fontSize <= 9 ? 9 : $fontSize;
+
+        // main image resource in desired size
+        $image      = imagecreatetruecolor($imgWidth, $imgHeight);
+
+        // background and text color fill
+        $colorFill  = imagecolorallocate($image, $colorRed, $colorGreen, $colorBlue);
+        $bgFill     = imagecolorallocate($image, $bgRed, $bgGreen, $bgBlue);
+
+        // fill image background
         imagefill($image, 0, 0, $bgFill);
+
+        //calculates and returns the bounding box in pixels for a TrueType text.
+        // imagettfbbox returns an array with 8 elements representing four points 
+        // making the bounding box of the text on success and false on error.
         $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
+
         while ($textBox[4] >= $imgWidth)
         {
             $fontSize -= round($fontSize / 2);
@@ -82,35 +72,15 @@ class Media
                 break;
             }
         }
-        $textWidth = abs($textBox[4] - $textBox[0]);
+
+        $textWidth  = abs($textBox[4] - $textBox[0]);
         $textHeight = abs($textBox[5] - $textBox[1]);
-        $textX = ($imgWidth - $textWidth) / 2;
-        $textY = ($imgHeight + $textHeight) / 2;
+        $textX      = ($imgWidth - $textWidth) / 2;
+        $textY      = ($imgHeight + $textHeight) / 2;
+
         imagettftext($image, $fontSize, 0, $textX, $textY, $colorFill, $fontFile, $text);
-        /**
-         * Return the image and destroy it afterwards.
-         */
 
-
-        switch ($type)
-        {
-            case 'png':
-                $img = Image::make($image);
-
-                return $img->response('png');
-                break;
-            case 'gif':
-                $img = Image::make($image);
-
-                return $img->response('gif');
-                break;
-            case 'jpg':
-            case 'jpeg':
-                $img = Image::make($image);
-
-                return $img->response('jpg');
-                break;
-        }
+        return Image::make($image)->response($imageType);
     }
 
     public static function upload($file, $CustomUID = false, $CategoryID, $FileMimeType, $original_name = 'undefined', $size, $quality = 90, $crop_type = false, $height = False, $width = false)
@@ -302,65 +272,63 @@ class Media
         return $name;
     }
 
-    public static function downloadById($fileId, $size_type = 'original', $not_found_img = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
+    public static function downloadById($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
     {
-        $driverDiskStorage  = \Storage::disk(config(self::LFM_DRIVER_DISK));
+        $driverDiskStorage = \Storage::disk(config(self::LFM_DRIVER_DISK));
+        $notFoundImagePath = $driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$notFoundImage}" );
 
-        // define some needed paths
-        $mediaTempFolderPath = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
-        $not_found_img_path = $driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/System/' . $not_found_img);
-        $not_found_default_img_path = base_path(LFM_404_DEFAULT);
-        
         // find file if exists
         $file = File::find(LFM_GetDecodeId($fileId));
 
-        // file not found action
+        // file not found in database
         if (!$file) {
 
-            // if $not_found_img is not found 
+            // if $notFoundImage is not found 
             // then make copy from defualt image
-            if (!file_exists($not_found_img_path)){
-                $res = $width || $height ? 
-                    self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF', $width, $height) :
-                    self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF');
+            if (!file_exists($notFoundImagePath)){
+                $res = $width || $height ? self::make404image($width, $height) : self::make404image();
             }else{
-                // make a copy of $not_found_img with desired width, height and quality
-                $res = Image::make($not_found_img_path);
+                // make a copy of $notFoundImage with desired width, height and quality
+                $res = Image::make($notFoundImagePath);
                 if ($width || $height){
                     $res->fit((int)$width, (int)$height);
                 }
-                $res = $res->response(self::extractFileExtension($not_found_img_path), $quality);
+                $res = $res->response(self::extractFileExtension($notFoundImagePath), $quality);
             }
 
             return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
         }
 
-        $isDirect = $file->is_direct == '1';
+        $mediaTempFolderPath = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
+
         $fileName = $file->filename;
-        $filePath = $isDirect ? 
-            "{$file->path}{$fileName}" : 
-            "{$file->path}/files/{$size_type}/".($size_type != 'original' ? $file[ $size_type . '_filename' ] : $fileName);
-        $fileId = $file->id;
-        $fileMimeType = $file->mimeType;
-        $fileOriginalName = $file->original_name;
-        $config = $isDirect ? config(self::LFM_DRIVER_DISK_UPLOAD) : config(self::LFM_DRIVER_DISK);
-        $base_path = \Storage::disk($config)->path('');
-        $file_name_hash = self::hashFileName($driverDiskStorage, $filePath, $fileId, $size_type, $not_found_img, $inline_content, $quality, $width, $height);
-        $relative_tmp_path =  "{$mediaTempFolderPath}/{$file_name_hash}";
-        $tmp_path = $base_path . $relative_tmp_path;
-        $file_EXT = strtolower(FileMimeType::where('mimeType', '=', $fileMimeType)->firstOrFail()->ext);
-        $headers = ["Content-Type"=>$fileMimeType,"Cache-Control"=>"public","max-age"=>31536000];
+
+        if ($file->is_direct == '1') {
+            $filePath = "{$file->path}{$fileName}";
+            $config = config(self::LFM_DRIVER_DISK_UPLOAD);
+        }else{
+            $filePath = "{$file->path}/files/{$sizeType}/".($sizeType != 'original' ? $file[ $sizeType . '_filename' ] : $fileName);
+            $config = config(self::LFM_DRIVER_DISK_UPLOAD);
+        }
+
+        $fileId            = $file->id;
+        $fileMimeType      = $file->mimeType;
+        $fileOriginalName  = $file->original_name;
+        $basePath          = \Storage::disk($config)->path('');
+        $fileNameHash      = self::hashFileName($driverDiskStorage, $filePath, $fileId, $sizeType, $notFoundImage, $inline_content, $quality, $width, $height);
+        $tempPath          = "{$basePath}{$mediaTempFolderPath}/{$fileNameHash}";
+        $fileExtension     = strtolower(FileMimeType::where('mimeType', '=', $fileMimeType)->firstOrFail()->ext);
+        $headers           = [ "Content-Type" => $fileMimeType, "Cache-Control" => "public", "max-age" => 31536000 ];
 
         //check if exist in tmp folder
-        if ($driverDiskStorage->has($relative_tmp_path))
+        if ($driverDiskStorage->has("{$mediaTempFolderPath}/{$fileNameHash}"))
         {
-            if (!$inline_content)
-            {
-                return response()->download($tmp_path, $fileOriginalName . '.' . $file_EXT, $headers);
+            if (!$inline_content){
+                return response()->download($tempPath, "{$fileOriginalName}.{$fileExtension}", $headers);
             }
 
-            $res = self::base64ImageContent(file_get_contents($base_path . $filePath), str_replace('.', '', $file_EXT));
-            file_put_contents($tmp_path, $res);
+            $res = self::base64ImageContent(file_get_contents($basePath . $filePath), $fileExtension);
+            file_put_contents($tempPath, $res);
             return $res;
         }
 
@@ -369,56 +337,50 @@ class Media
         //check local storage for check file exist
         if (\Storage::disk($config)->has($filePath))
         {
-            $file_base_path = $base_path . $filePath;
+            $file_base_path = $basePath . $filePath;
 
-            if (!in_array($file_EXT, ['png', 'jpg', 'jpeg'])){
-                return response()->download($file_base_path, $fileName . '.' . $file_EXT, $headers);
+            if (!in_array($fileExtension, ['png', 'jpg', 'jpeg'])){
+                return response()->download($file_base_path, "{$fileName}.{$fileExtension}", $headers);
             }
 
-
             $res = Image::make($file_base_path);
-                
+
             if ($width && $height)
             {
                 $res = $res->fit((int)$width, (int)$height);
-                $res->save($tmp_path);
-                $res = $res->response($file_EXT, (int)$quality);
             }else{
-                $fileExt = $quality < 100 ? 'jpg' : $file_EXT;
-                $res->save($tmp_path);
-                $res = $res->response($fileExt, (int)$quality);
+                $fileExtension = $quality < 100 ? 'jpg' : $fileExtension;
             }
 
+            $res->save($tempPath);
+            $res = $res->response($fileExtension, (int)$quality);
+
             return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
 
         }
 
-        $width = $width ? $width : '640';
+        $width  = $width  ? $width  : '640';
         $height = $height ? $height : '400';
 
-        if (!file_exists($not_found_img_path)){
-            $res = self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF', $width, $height);
+        if (!file_exists($notFoundImagePath)){
+            $res = self::make404image($width, $height);
             return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
         }
 
-        $ext = self::extractFileExtension($not_found_img_path, 'jpg');
+        $ext = self::extractFileExtension($notFoundImagePath, 'jpg');
 
-        $not_found_hash = "{$ext}_{$quality}_{$width}_{$height}";
+        $notFoundHash = "{$ext}_{$quality}_{$width}_{$height}";
 
-        $relative_not_found_tmp_path = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder/' . $not_found_hash;
+        $tempPath = "{$basePath}{$mediaTempFolderPath}/{$notFoundHash}";
 
-        $relative_tmp_path =  "{$mediaTempFolderPath}/{$not_found_hash}";
-
-        $tmp_path = $base_path . $relative_tmp_path;
-
-        if (!$driverDiskStorage->has($relative_not_found_tmp_path))
+        if (!$driverDiskStorage->has(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/media_tmp_folder/{$notFoundHash}"))
         {
-            $res = Image::make($not_found_img_path)->fit((int)$width, (int)$height)->save($tmp_path);
+            $res = Image::make($notFoundImagePath)->fit((int)$width, (int)$height)->save($tempPath);
         }
 
         if (!isset($res))
         {
-            $res = response()->download($tmp_path, $not_found_hash . '.' . $ext, $headers);
+            $res = response()->download($tempPath, "{$notFoundHash}.{$ext}", $headers);
         }
 
         return $res;
@@ -594,5 +556,9 @@ class Media
         {
             $storage->makeDirectory($path);
         }
+    }
+
+    public static function make404image($width = false, $height = false){
+        return $width && $height ? self::makeImage($width, $height) :  self::makeImage();
     }
 }
