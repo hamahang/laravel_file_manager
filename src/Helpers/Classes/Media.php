@@ -7,6 +7,8 @@ use Hamahang\LFM\Models\Category;
 use Hamahang\LFM\Models\FileMimeType;
 use Intervention\Image\Facades\Image;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
+use Intervention\Image\ImageManager;
+
 
 class Media
 {
@@ -20,6 +22,63 @@ class Media
     // ---- Static Needed Variables ---- //
     static $imageTypesList = ['png', 'gif', 'jpg'];
     static $filterOptions = [ 'options' => [ 'min_range' => 0, 'max_range' => 9999 ] ];
+
+    public static function make404Image2($type = 'png', $text = '404', $bg = 'CC0099', $color = 'FFFFFF', $imgWidth = '640', $imgHeight = '480')
+    {
+        $manager = new ImageManager(['driver' => 'imagick']);
+
+        $fontFile = realpath(__DIR__) . DIRECTORY_SEPARATOR . '/../../assets/fonts/IranSans/ttf/IRANSansWeb.ttf';
+        $fontSize = 24;
+        $text = 404;
+
+        $fontSize = round(($imgWidth - 50) / 8);
+        $fontSize = $fontSize <= 9 ? 9 : $fontSize;
+
+        $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
+
+        while ($textBox[4] >= $imgWidth)
+        {
+            $fontSize -= round($fontSize / 2);
+            $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
+            if ($fontSize <= 9)
+            {
+                $fontSize = 9;
+                break;
+            }
+        }
+
+        $textWidth  = abs($textBox[2] - $textBox[0]);
+        $textHeight = abs($textBox[1] - $textBox[7]);
+
+        // $textX      = ($imgWidth - $textWidth) / 2;
+        // $textY      = ($imgHeight - $textHeight) / 2;
+
+        $textX = ($imgWidth) / 2;
+        $textY = ($imgHeight) / 2;
+
+
+        // use callback to define details
+        $img = $manager->canvas($imgWidth, $imgHeight);
+
+        $img->fill($bg);
+
+        $img->line(0, $imgHeight / 2, $imgWidth, $imgHeight / 2, function ($draw) {
+            $draw->color('#ffffff');
+        });
+
+        $img->line($imgWidth / 2, 0, $imgWidth / 2, $imgHeight, function ($draw) {
+            $draw->color('#ffffff');
+        });
+
+        $img->text($text, 0, 0, function($font) use ($fontFile, $fontSize, $color) {
+            $font->file($fontFile);
+            $font->size($fontSize);
+            $font->color($color);
+            $font->valign('middle');
+        });
+
+        $img->save(base_path("public/404.{$type}"));
+    }
 
     static function makeImage($imgWidth = '640', $imgHeight = '480', $imageType = 'png', $text = '404', $backgroundColor = 'CC0099', $textColor = 'FFFFFF')
     {
