@@ -323,17 +323,8 @@ class Media
     public static function downloadByName($FileName, $not_found_img = '404.png', $size_type = 'original', $inline_content = false, $quality = 90, $width = false, $height = False)
     {
         $file = File::where('filename', '=', $FileName)->first();
-        if ($file)
-        {
-            $id = $file->id;
-        }
-        else
-        {
-            $id = -1;
-        }
-        $download = self::downloadById($id, $not_found_img, $size_type, $inline_content, $quality, $width, $height);
-
-        return $download;
+        $id = $file ? $file->id : -1;
+        return self::downloadById($id, $not_found_img, $size_type, $inline_content, $quality, $width, $height);
     }
 
     public static function downloadFromPublicStorage($file_name, $path = "", $file_EXT = 'png', $headers = ["Content-Type: image/png"])
@@ -465,41 +456,4 @@ class Media
         return $result;
     }
 
-    public static function base64ImageContent($content, $extension)
-    {
-        $base64Content = base64_encode($content);
-        return "data:image/{$extension};base64,{$base64Content}";
-    }
-
-    public static function extractFileExtension($filePath, $defaultExtension = 'jpg')
-    {
-        $fileExtension = pathinfo($filePath, PATHINFO_EXTENSION);
-        return $fileExtension != ''? $fileExtension : $defaultExtension;
-    }
-
-    public static function hashFileName($storage, $filePath, $fileId, $sizeType, $notFoundImage, $inlineContent, $quality, $width, $height)
-    {
-        $md5File = $storage->has($filePath) ? md5($storage->get($filePath)) : '';
-        $hash = md5("{$sizeType}_{$notFoundImage}_{$inlineContent}_{$quality}_{$width}_{$height}_{$md5File}");
-        return "tmp_fid_{$fileId}_{$hash}";
-    }
-
-    public static function makePathIfNotExists($storage, $path)
-    {
-        if (!is_dir($storage->path($path)))
-        {
-            $storage->makeDirectory($path);
-        }
-    }
-
-    public static function make404image($width = false, $height = false)
-    {
-        if ($width && $height) {
-            $textImage = new TextImage($width, $height);
-            return $textImage->make();
-        }
-        
-        $textImage = new TextImage();
-        return $textImage->make();
-    }
 }
