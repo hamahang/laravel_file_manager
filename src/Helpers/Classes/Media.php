@@ -7,8 +7,7 @@ use Hamahang\LFM\Models\Category;
 use Hamahang\LFM\Models\FileMimeType;
 use Intervention\Image\Facades\Image;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
-use Intervention\Image\ImageManager;
-
+use TextImage;
 
 class Media
 {
@@ -17,130 +16,6 @@ class Media
     const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
     const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
     const LFM_404_DEFAULT = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
-    const IRANSANSWEB_FONT ='/../../assets/fonts/IranSans/ttf/IRANSansWeb.ttf';
-
-    // ---- Static Needed Variables ---- //
-    static $imageTypesList = ['png', 'gif', 'jpg'];
-    static $filterOptions = [ 'options' => [ 'min_range' => 0, 'max_range' => 9999 ] ];
-
-    public static function make404Image2($type = 'png', $text = '404', $bg = 'CC0099', $color = 'FFFFFF', $imgWidth = '640', $imgHeight = '480')
-    {
-        $manager = new ImageManager(['driver' => 'imagick']);
-
-        $fontFile = realpath(__DIR__) . DIRECTORY_SEPARATOR . '/../../assets/fonts/IranSans/ttf/IRANSansWeb.ttf';
-        $fontSize = 24;
-        $text = 404;
-
-        $fontSize = round(($imgWidth - 50) / 8);
-        $fontSize = $fontSize <= 9 ? 9 : $fontSize;
-
-        $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
-
-        while ($textBox[4] >= $imgWidth)
-        {
-            $fontSize -= round($fontSize / 2);
-            $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
-            if ($fontSize <= 9)
-            {
-                $fontSize = 9;
-                break;
-            }
-        }
-
-        $textWidth  = abs($textBox[2] - $textBox[0]);
-        $textHeight = abs($textBox[1] - $textBox[7]);
-
-        // $textX      = ($imgWidth - $textWidth) / 2;
-        // $textY      = ($imgHeight - $textHeight) / 2;
-
-        $textX = ($imgWidth) / 2;
-        $textY = ($imgHeight) / 2;
-
-
-        // use callback to define details
-        $img = $manager->canvas($imgWidth, $imgHeight);
-
-        $img->fill($bg);
-
-        $img->line(0, $imgHeight / 2, $imgWidth, $imgHeight / 2, function ($draw) {
-            $draw->color('#ffffff');
-        });
-
-        $img->line($imgWidth / 2, 0, $imgWidth / 2, $imgHeight, function ($draw) {
-            $draw->color('#ffffff');
-        });
-
-        $img->text($text, 0, 0, function($font) use ($fontFile, $fontSize, $color) {
-            $font->file($fontFile);
-            $font->size($fontSize);
-            $font->color($color);
-            $font->valign('middle');
-        });
-
-        $img->save(base_path("public/404.{$type}"));
-    }
-
-    static function makeImage($imgWidth = '640', $imgHeight = '480', $imageType = 'png', $text = '404', $backgroundColor = 'CC0099', $textColor = 'FFFFFF')
-    {
-        // prepare image type 
-        $imageType = strtolower($imageType);
-        $imageType = in_array($imageType, self::$imageTypesList) ? $imageType : 'jpg';
-
-        // image width and height must be in valid range and number
-        $imgWidth   = filter_var($imgWidth,  FILTER_VALIDATE_INT, self::$filterOptions) ? $imgWidth  : '640';
-        $imgHeight  = filter_var($imgHeight, FILTER_VALIDATE_INT, self::$filterOptions) ? $imgHeight : '480';
-
-        // convert encoding of text 
-        $text = mb_convert_encoding($text, 'UTF-8', mb_detect_encoding($text, 'UTF-8, ISO-8859-1'));
-        $text = mb_encode_numericentity($text, [0x0, 0xffff, 0, 0xffff], 'UTF-8');
-
-        // dispatch text and background color
-        list($bgRed, $bgGreen, $bgBlue)             = sscanf($backgroundColor, "%02x%02x%02x");
-        list($colorRed, $colorGreen, $colorBlue)    = sscanf($textColor, "%02x%02x%02x");
-
-        // use IRANSansWeb Font if exists or arial
-        $fontFile = realpath(__DIR__) . self::IRANSANSWEB_FONT;
-        $fontFile = !is_readable($fontFile) ? 'arial' : $fontFile;
-
-        // prepare font size
-        $fontSize = round(($imgWidth - 50) / 8);
-        $fontSize = $fontSize <= 9 ? 9 : $fontSize;
-
-        // main image resource in desired size
-        $image      = imagecreatetruecolor($imgWidth, $imgHeight);
-
-        // background and text color fill
-        $colorFill  = imagecolorallocate($image, $colorRed, $colorGreen, $colorBlue);
-        $bgFill     = imagecolorallocate($image, $bgRed, $bgGreen, $bgBlue);
-
-        // fill image background
-        imagefill($image, 0, 0, $bgFill);
-
-        //calculates and returns the bounding box in pixels for a TrueType text.
-        // imagettfbbox returns an array with 8 elements representing four points 
-        // making the bounding box of the text on success and false on error.
-        $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
-
-        while ($textBox[4] >= $imgWidth)
-        {
-            $fontSize -= round($fontSize / 2);
-            $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
-            if ($fontSize <= 9)
-            {
-                $fontSize = 9;
-                break;
-            }
-        }
-
-        $textWidth  = abs($textBox[4] - $textBox[0]);
-        $textHeight = abs($textBox[5] - $textBox[1]);
-        $textX      = ($imgWidth - $textWidth) / 2;
-        $textY      = ($imgHeight + $textHeight) / 2;
-
-        imagettftext($image, $fontSize, 0, $textX, $textY, $colorFill, $fontFile, $text);
-
-        return Image::make($image)->response($imageType);
-    }
 
     public static function upload($file, $CustomUID = false, $CategoryID, $FileMimeType, $original_name = 'undefined', $size, $quality = 90, $crop_type = false, $height = False, $width = false)
     {
@@ -617,7 +492,14 @@ class Media
         }
     }
 
-    public static function make404image($width = false, $height = false){
-        return $width && $height ? self::makeImage($width, $height) :  self::makeImage();
+    public static function make404image($width = false, $height = false)
+    {
+        if ($width && $height) {
+            $textImage = new TextImage($width, $height);
+            return $textImage->make();
+        }
+        
+        $textImage = new TextImage();
+        return $textImage->make();
     }
 }
