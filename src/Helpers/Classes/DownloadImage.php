@@ -169,12 +169,7 @@ class DownloadImage
 
     private function make404image($width = false, $height = false)
     {
-        if ($width && $height) {
-            $textImage = new TextImage($width, $height);
-            return $textImage->make();
-        }
-
-        $textImage = new TextImage();
+        $textImage = $width && $height ? new TextImageUsingGD($width, $height) : new TextImageUsingGD();
         return $textImage->make();
     }
 

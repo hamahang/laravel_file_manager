@@ -4,11 +4,11 @@ namespace Hamahang\LFM\Helpers\Classes;
 
 use Intervention\Image\ImageManagerStatic as Image;
 
-class TextImage
+class TextImageUsingGD
 {
     private $imgWidth = '640';
     private $imgHeight = '480';
-    private $imageType = 'png';
+    private $imgType = 'png';
     private $text = '404';
     private $backgroundColor = 'CC0099';
     private $textColor = 'FFFFFF';
@@ -24,7 +24,7 @@ class TextImage
         $this->angle = (int) $angle;
         $this->imgWidth = $this->validateDimension($imgWidth, '640');
         $this->imgHeight = $this->validateDimension($imgHeight, '480');
-        $this->imageType = $this->imageTypeValidation($imageType);
+        $this->imgType = $this->imageTypeValidation($imageType);
         $this->text = $this->fixTextEncoding($text);
         $this->backgroundColor = $backgroundColor;
         $this->textColor = $textColor;
@@ -36,21 +36,36 @@ class TextImage
         $fontSize = round(($this->imgWidth - 50) / 8);
         $fontSize = $fontSize <= 9 ? 9 : $fontSize;
 
-        $image = Image::canvas($this->imgWidth, $this->imgHeight, $this->backgroundColor);
-
+        $imageResource = $this->makeCanvas();
 
         // draw cross lines in center of image to check text is center
-        $this->drawCenterCrossLines($image, '000000');
+        $this->drawCenterCrossLines($imageResource, '000000');
 
         list($xpoint, $ypoint) = $this->getCoordinatesOfTextInCenterOfImage($fontSize);
 
-        $image->text($this->text, $xpoint, $ypoint, function ($font) use ($fontSize) {
-            $font->file($this->fontFile);
-            $font->size($fontSize);
-            $font->color($this->textColor);
-        });
+        $this->drawText($imageResource, $xpoint, $ypoint, $fontSize);
 
-        return $image->response($this->imageType);
+        // all action have been used GD library because of centerning problem in Intervention Library
+        // in final return we use Intervention for compatibility
+        return Image::make($imageResource)->response($this->imgType);
+    }
+
+    private function makeCanvas()
+    {
+        $imageResource = imagecreatetruecolor($this->imgWidth, $this->imgHeight);
+        imagefilledrectangle($imageResource, 0, 0, $this->imgWidth, $this->imgHeight, $this->gdColor($imageResource, $this->backgroundColor));
+        return $imageResource;
+    }
+
+    private function drawText(&$imageResource, $xpoint, $ypoint, $fontSize)
+    {
+        imagettftext($imageResource, $fontSize, 0, $xpoint, $ypoint, $this->gdColor($imageResource, $this->textColor), $this->fontFile, $this->text);
+    }
+
+    private function drawCenterCrossLines($imageResource, $hexColor='000000')
+    {
+        $this->hrLine($imageResource, $hexColor, $this->imgHeight / 2, $this->imgWidth);
+        $this->vtLine($imageResource, $hexColor, $this->imgWidth / 2, $this->imgHeight);
     }
 
     private function validateDimension($coordinate, $default)
@@ -95,12 +110,29 @@ class TextImage
         return !is_readable($fontFile) ? 'arial' : $fontFile;
     }
 
-    private function drawCenterCrossLines($image, $hexColor='000000')
+    public function hex2rgb($hexColor)
     {
-        // hr line
-        $image->line(0, $this->imgHeight / 2, $this->imgWidth, $this->imgHeight / 2, fn($draw) => $draw->color($hexColor));
+        return sscanf(str_replace('#', '', $hexColor), "%02x%02x%02x");
+    }
 
-        // vt line
-        $image->line($this->imgWidth / 2, 0, $this->imgWidth / 2, $this->imgHeight, fn($draw) => $draw->color($hexColor));
+    public function gdColor(&$gdResource, $hexColor)
+    {
+        list($r, $g, $b) = $this->hex2rgb($hexColor);
+        return imagecolorallocate($gdResource, $r, $g, $b);
+    }
+
+    public function hrLine(&$gdResource, $hexColor, $yLocation, $length)
+    {
+        return $this->line($gdResource, $hexColor, [0, $yLocation], [$length, $yLocation]);
+    }
+
+    public function vtLine(&$gdResource, $hexColor, $xLocation, $length)
+    {
+        return $this->line($gdResource, $hexColor, [$xLocation, 0], [$xLocation, $length]);
+    }
+
+    public function line(&$gdResource, $hexColor, $pointOne, $pointTwo)
+    {
+        return imageline($gdResource, $pointOne[0], $pointOne[1], $pointTwo[0], $pointTwo[1], $this->gdColor($gdResource, $hexColor));
     }
 }
