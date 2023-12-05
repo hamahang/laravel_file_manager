@@ -7,57 +7,43 @@ use Hamahang\LFM\Models\Category;
 use Hamahang\LFM\Models\FileMimeType;
 use Intervention\Image\Facades\Image;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
-use TextImage;
 
 class Media
 {
     // ---- Constants Section ---- //
-    const LFM_DRIVER_DISK = 'laravel_file_manager.driver_disk';
-    const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
-    const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
-    const LFM_404_DEFAULT = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
+    public const LFM_DRIVER_DISK = 'laravel_file_manager.driver_disk';
+    public const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
+    public const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
+    public const LFM_404_DEFAULT = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
 
-    public static function upload($file, $CustomUID = false, $CategoryID, $FileMimeType, $original_name = 'undefined', $size, $quality = 90, $crop_type = false, $height = False, $width = false)
+    public static function upload($file, $CustomUID = false, $CategoryID, $FileMimeType, $original_name = 'undefined', $size, $quality = 90, $crop_type = false, $height = false, $width = false)
     {
         $time = time();
-        if (!$CustomUID)
-        {
-            if (auth()->check())
-            {
+        if (!$CustomUID) {
+            if (auth()->check()) {
                 $CustomUID = auth()->id();
-            }
-            else
-            {
+            } else {
                 $CustomUID = 0;
             }
         }
         $extension = $FileMimeType->ext;
         $mimeType = $FileMimeType->mimeType;
-        if (in_array(-2, Category::getAllParentId($CategoryID)))
-        {
+        if (in_array(-2, Category::getAllParentId($CategoryID))) {
             $Path = config('laravel_file_manager.main_storage_folder_name') . '/share_folder/';
-        }
-        elseif (in_array(-1, Category::getAllParentId($CategoryID)))
-        {
+        } elseif (in_array(-1, Category::getAllParentId($CategoryID))) {
             $Path = config('laravel_file_manager.main_storage_folder_name') . '/public_folder/';
-        }
-        else
-        {
+        } else {
             $Path = config('laravel_file_manager.main_storage_folder_name') . '/media_folder/';
         }
         $parents = Category::all_parents($CategoryID);
         $is_picture = false;
-        if ($parents)
-        {
-            foreach ($parents as $parent)
-            {
-                if ($parent->parent_category && $parent->parent_category->parent_category_id != '#')
-                {
+        if ($parents) {
+            foreach ($parents as $parent) {
+                if ($parent->parent_category && $parent->parent_category->parent_category_id != '#') {
                     $Path .= $parent->parent_category->title_disc . '/';
                 }
             }
-            if ($parent->parent_category_id != '#')
-            {
+            if ($parent->parent_category_id != '#') {
                 $Path .= $parent->title_disc;
             }
         }
@@ -66,7 +52,7 @@ class Media
         $extension = LFM_Sanitize($extension);
 
         //save data to database
-        $FileSave = new File;
+        $FileSave = new File();
         $FileSave->original_name = $OriginalFileName;
         $FileSave->extension = $extension;
         $FileSave->file_mime_type_id = $FileMimeType->id;
@@ -87,8 +73,7 @@ class Media
         \Storage::disk(config('laravel_file_manager.driver_disk'))->put($FullPath, $file_content);
 
         //check file is picture
-        if (in_array($mimeType, config('laravel_file_manager.allowed_pic')))
-        {
+        if (in_array($mimeType, config('laravel_file_manager.allowed_pic'))) {
             $crop_database_name = self::resizeImageUpload($file, $FileSave, $FullPath, $filename);
             $is_picture = true;
             $FileSave->file_md5 = $crop_database_name['md5'];
@@ -105,9 +90,7 @@ class Media
             $FileSave->medium_size = $crop_database_name['size_medium'];
             $FileSave->small_size = $crop_database_name['size_small'];
             $FileSave->save();
-        }
-        else
-        {
+        } else {
             $is_picture = false;
             $FileSave->filename = $filename;
             $FileSave->save();
@@ -136,27 +119,22 @@ class Media
         $upload_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path(config('laravel_file_manager.main_storage_folder_name') . '/media_folder/');
         $original_file = \Storage::disk(config('laravel_file_manager.driver_disk'))->path('');
         $tmp_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder/');
-        if (config('laravel_file_manager.Optimise_image'))
-        {
+        if (config('laravel_file_manager.Optimise_image')) {
             $optimizerChain = OptimizerChainFactory::create();
             $optimizerChain->optimize($original_file . $FullPath);
         }
-        foreach (config('laravel_file_manager.crop_type') as $crop_type)
-        {
+        foreach (config('laravel_file_manager.crop_type') as $crop_type) {
             $target_path = $FileSave->path . '/files/' . $crop_type;
-            if ($crop_type != 'original')
-            {
+            if ($crop_type != 'original') {
                 $OptionIMG = config('laravel_file_manager.size_' . $crop_type);
                 $filename = 'fid_' . $FileSave->id . "_v0_" . '_uid_' . $FileSave->user_id . '_' . $crop_type . '_' . md5_file($file) . "_" . time() . '_' . $FileSave->extension;
                 $crop = config('laravel_file_manager.crop_chose');
 
                 //create directory if not exist
-                if (!is_dir($tmp_path))
-                {
+                if (!is_dir($tmp_path)) {
                     \Storage::disk(config('laravel_file_manager.driver_disk'))->makeDirectory(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder');
                 }
-                switch ($crop)
-                {
+                switch ($crop) {
                     case "smart":
                         $file_cropped = LFM_SmartCropIMG($file, $OptionIMG);
                         LFM_SaveCompressImage(false, $file_cropped->oImg, $tmp_path . '/' . $filename, $FileSave->extension, $quality);
@@ -168,35 +146,26 @@ class Media
                         $res = Image::make($file)->resize($OptionIMG['height'], $OptionIMG['width'])->save($tmp_path . '/' . $filename);
                         break;
                 }
-                if (config('laravel_file_manager.Optimise_image'))
-                {
+                if (config('laravel_file_manager.Optimise_image')) {
                     $optimizerChain->optimize($tmp_path . '/' . $filename);
                 }
                 $opt_name = 'fid_' . $FileSave->id . "_v0_" . 'uid_' . $FileSave->user_id . '_' . $crop_type . '_' . md5_file($tmp_path . '/' . $filename) . "_" . time() . '_' . $FileSave->extension;
                 $opt_size = \Storage::disk(config('laravel_file_manager.driver_disk'))->size(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder/' . $filename);
                 $opt_file = \Storage::disk(config('laravel_file_manager.driver_disk'))->move(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder/' . $filename, $FileSave->path . '/files/' . $crop_type . '/' . $opt_name);
-                if ($opt_file)
-                {
+                if ($opt_file) {
                     $name[ 'size_' . $crop_type ] = $opt_size;
                     $name[ $crop_type ] = $opt_name;
-                }
-                else
-                {
+                } else {
                     return false;
                 }
-            }
-            else
-            {
+            } else {
                 $name['md5'] = md5_file($original_file . $FullPath);
                 $name['original'] = 'fid_' . $FileSave->id . "_v0_" . 'uid_' . $FileSave->user_id . '_' . $name['md5'] . "_" . time() . '_' . $FileSave->extension;
-                if ($name['md5'] != $FileSave->file_md5)
-                {
+                if ($name['md5'] != $FileSave->file_md5) {
                     $opt_size = \Storage::disk(config('laravel_file_manager.driver_disk'))->size($FullPath);
                     $opt_file = \Storage::disk(config('laravel_file_manager.driver_disk'))->move($FullPath, $FileSave->path . '/files/' . $crop_type . '/' . $name['original']);
                     $name['size_original'] = $opt_size;
-                }
-                else
-                {
+                } else {
                     $name['original'] = $original_name;
                     $name['size_original'] = $FileSave->size;
                 }
@@ -206,10 +175,10 @@ class Media
         return $name;
     }
 
-    public static function downloadById($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
+    public static function downloadById($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inline_content = false, $quality = 90, $width = false, $height = false)
     {
         $driverDiskStorage = \Storage::disk(config(self::LFM_DRIVER_DISK));
-        $notFoundImagePath = $driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$notFoundImage}" );
+        $notFoundImagePath = $driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$notFoundImage}");
 
         // find file if exists
         $file = File::find(LFM_GetDecodeId($fileId));
@@ -217,14 +186,14 @@ class Media
         // file not found in database
         if (!$file) {
 
-            // if $notFoundImage is not found 
+            // if $notFoundImage is not found
             // then make copy from defualt image
-            if (!file_exists($notFoundImagePath)){
+            if (!file_exists($notFoundImagePath)) {
                 $res = $width || $height ? self::make404image($width, $height) : self::make404image();
-            }else{
+            } else {
                 // make a copy of $notFoundImage with desired width, height and quality
                 $res = Image::make($notFoundImagePath);
-                if ($width || $height){
+                if ($width || $height) {
                     $res->fit((int)$width, (int)$height);
                 }
                 $res = $res->response(self::extractFileExtension($notFoundImagePath), $quality);
@@ -240,7 +209,7 @@ class Media
         if ($file->is_direct == '1') {
             $filePath = "{$file->path}{$fileName}";
             $config = config(self::LFM_DRIVER_DISK_UPLOAD);
-        }else{
+        } else {
             $filePath = "{$file->path}/files/{$sizeType}/".($sizeType != 'original' ? $file[ $sizeType . '_filename' ] : $fileName);
             $config = config(self::LFM_DRIVER_DISK_UPLOAD);
         }
@@ -255,9 +224,8 @@ class Media
         $headers           = [ "Content-Type" => $fileMimeType, "Cache-Control" => "public", "max-age" => 31536000 ];
 
         //check if exist in tmp folder
-        if ($driverDiskStorage->has("{$mediaTempFolderPath}/{$fileNameHash}"))
-        {
-            if (!$inline_content){
+        if ($driverDiskStorage->has("{$mediaTempFolderPath}/{$fileNameHash}")) {
+            if (!$inline_content) {
                 return response()->download($tempPath, "{$fileOriginalName}.{$fileExtension}", $headers);
             }
 
@@ -269,20 +237,18 @@ class Media
         self::makePathIfNotExists($driverDiskStorage, $mediaTempFolderPath);
 
         //check local storage for check file exist
-        if (\Storage::disk($config)->has($filePath))
-        {
+        if (\Storage::disk($config)->has($filePath)) {
             $file_base_path = $basePath . $filePath;
 
-            if (!in_array($fileExtension, ['png', 'jpg', 'jpeg'])){
+            if (!in_array($fileExtension, ['png', 'jpg', 'jpeg'])) {
                 return response()->download($file_base_path, "{$fileName}.{$fileExtension}", $headers);
             }
 
             $res = Image::make($file_base_path);
 
-            if ($width && $height)
-            {
+            if ($width && $height) {
                 $res = $res->fit((int)$width, (int)$height);
-            }else{
+            } else {
                 $fileExtension = $quality < 100 ? 'jpg' : $fileExtension;
             }
 
@@ -293,10 +259,10 @@ class Media
 
         }
 
-        $width  = $width  ? $width  : '640';
+        $width  = $width ? $width : '640';
         $height = $height ? $height : '400';
 
-        if (!file_exists($notFoundImagePath)){
+        if (!file_exists($notFoundImagePath)) {
             $res = self::make404image($width, $height);
             return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
         }
@@ -307,20 +273,18 @@ class Media
 
         $tempPath = "{$basePath}{$mediaTempFolderPath}/{$notFoundHash}";
 
-        if (!$driverDiskStorage->has(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/media_tmp_folder/{$notFoundHash}"))
-        {
+        if (!$driverDiskStorage->has(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/media_tmp_folder/{$notFoundHash}")) {
             $res = Image::make($notFoundImagePath)->fit((int)$width, (int)$height)->save($tempPath);
         }
 
-        if (!isset($res))
-        {
+        if (!isset($res)) {
             $res = response()->download($tempPath, "{$notFoundHash}.{$ext}", $headers);
         }
 
         return $res;
     }
 
-    public static function downloadByName($FileName, $not_found_img = '404.png', $size_type = 'original', $inline_content = false, $quality = 90, $width = false, $height = False)
+    public static function downloadByName($FileName, $not_found_img = '404.png', $size_type = 'original', $inline_content = false, $quality = 90, $width = false, $height = false)
     {
         $file = File::where('filename', '=', $FileName)->first();
         $id = $file ? $file->id : -1;
@@ -330,14 +294,11 @@ class Media
     public static function downloadFromPublicStorage($file_name, $path = "", $file_EXT = 'png', $headers = ["Content-Type: image/png"])
     {
         $base_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path('');
-        if (\Storage::disk('public')->has($path . '/' . $file_name . '.' . $file_EXT))
-        {
+        if (\Storage::disk('public')->has($path . '/' . $file_name . '.' . $file_EXT)) {
             $file_path = $base_path . '/public/' . $path . '/' . $file_name . '.' . $file_EXT;
 
             return response()->download($file_path, $file_name . "." . $file_EXT, $headers);
-        }
-        else
-        {
+        } else {
             return response()->download($base_path . '/public/flags/404.png');
         }
     }
@@ -346,8 +307,7 @@ class Media
     {
         $time = time();
         $base_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path('');
-        switch ($crop_type)
-        {
+        switch ($crop_type) {
             case "original":
                 $FileSave->version++;
                 $filename = 'fid_' . $FileSave->id . '_v' . $FileSave->version . '_uid_' . $FileSave->user_id . '_' . md5(base64_decode($data)) . "_" . $time . '_' . $FileSave->extension;
@@ -369,7 +329,7 @@ class Media
                 \File::put($base_path . '/' . $FileSave->path . '/files/medium/' . $medium_filename, base64_decode($data));
                 $FileSave->medium_filename = $medium_filename;
                 break;
-            case "small" :
+            case "small":
                 $FileSave->small_version++;
                 $small_filename = 'fid_' . $FileSave->id . '_v' . $FileSave->small_version . '_uid_' . $FileSave->user_id . '_small_' . md5(base64_decode($data)) . "_" . $time . '_' . $FileSave->extension;
                 \File::put($base_path . '/' . $FileSave->path . '/files/small/' . $small_filename, base64_decode($data));
@@ -382,16 +342,13 @@ class Media
         return $result;
     }
 
-    public static function directUpload($file, $path, $FileMimeType, $quality = 90, $crop_type = false, $height = False, $width = false)
+    public static function directUpload($file, $path, $FileMimeType, $quality = 90, $crop_type = false, $height = false, $width = false)
     {
         $time = time();
         $size = $file->getSize();
-        if (auth()->check())
-        {
+        if (auth()->check()) {
             $user_id = auth()->id();
-        }
-        else
-        {
+        } else {
             $user_id = 0;
         }
         $extension = $FileMimeType->ext;
@@ -404,7 +361,7 @@ class Media
         $extension = LFM_Sanitize($extension);
 
         //save data to database
-        $FileSave = new File;
+        $FileSave = new File();
         $FileSave->original_name = $OriginalFileName;
         $FileSave->extension = $extension;
         $FileSave->file_mime_type_id = $FileMimeType->id;
@@ -427,28 +384,19 @@ class Media
         $FileSave->file_md5 = md5_file($file);
         $FileSave->filename = $filename;
         $FileSave->save();
-        if (isset($file->user->name))
-        {
+        if (isset($file->user->name)) {
             $username = $FileSave->user->name;
-        }
-        else
-        {
+        } else {
             $username = 'Public';
         }
         $result = ['id' => LFM_getEncodeId($FileSave->id), 'UID' => $user_id, 'Path' => $path, 'size' => $size, 'FileName' => $filename, 'created' => $FileSave->created_at, 'updated' => $FileSave->updated_at, 'user' => $username, 'original_name' => $OriginalFileName, 'is_picture' => $is_picture];
-        if (in_array($FileSave->mimeType, config('laravel_file_manager.allowed_pic')))
-        {
+        if (in_array($FileSave->mimeType, config('laravel_file_manager.allowed_pic'))) {
             $result['icon'] = 'image';
-        }
-        else
-        {
+        } else {
             $class = $FileSave->FileMimeType->icon_class;
-            if ($class)
-            {
+            if ($class) {
                 $result['icon'] = $FileSave->FileMimeType->icon_class;
-            }
-            else
-            {
+            } else {
                 $result['icon'] = 'fa-file-o';
             }
         }

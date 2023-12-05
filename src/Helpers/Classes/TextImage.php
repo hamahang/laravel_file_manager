@@ -6,7 +6,6 @@ use Intervention\Image\ImageManagerStatic as Image;
 
 class TextImage
 {
-
     private $imgWidth = '640';
     private $imgHeight = '480';
     private $imageType = 'png';
@@ -73,7 +72,7 @@ class TextImage
 
     private function textCenterCordinates($imageWidth, $imageHeigth, $fontSize)
     {
-        list($left, $bottom, $right,,, $top) = imagettfbbox($fontSize, $this->angle, $this->fontFile, $this->text);
+        list($left, $bottom, $right, , , $top) = imagettfbbox($fontSize, $this->angle, $this->fontFile, $this->text);
         $left_offset = ($right - $left) / 2;
         $top_offset = ($bottom - $top) / 2;
         return [
