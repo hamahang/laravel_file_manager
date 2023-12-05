@@ -67,7 +67,7 @@ class DownloadImage
             $this->fileFilename = $this->file->filename;
             $this->fileMimeType = $this->file->mimeType;
             $this->fileOriginalName = $this->file->original_name;
-            $this->fileExtension = strtolower(FileMimeType::where('mimeType', '=', $this->fileMimeType)->firstOrFail()->ext);
+            $this->fileExtension = str_replace('.', '', strtolower(FileMimeType::where('mimeType', '=', $this->fileMimeType)->firstOrFail()->ext));
             $this->headers = ["Content-Type" => $this->fileMimeType, "Cache-Control" => "public", "max-age" => 31536000];
 
             $this->praparefilePath();
@@ -160,24 +160,30 @@ class DownloadImage
         return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
     }
 
-    private function make404image($width = false, $height = false)
+    private function make404image($imageType = 'png')
     {
-        $textImage = $width && $height ? new TextImageUsingGD($width, $height) : new TextImageUsingGD();
-        return $textImage->make();
+        return (new TextImageUsingGD($this->width, $this->height, $imageType))->make();
     }
 
     private function makeCopyOfNotFoundImageOrMake404()
     {
         if (!file_exists($this->notFoundImagePath)) {
-            $res = $this->width || $this->height ? $this->make404image($this->width, $this->height) : $this->make404image();
+            $fileExtension = 'jpg';
+            $res = $this->make404image($fileExtension);
         } else {
-            $res = Image::make($this->notFoundImagePath);
-            if ($this->width || $this->height) {
-                $res->fit((int) $this->width, (int) $this->height);
-            }
-            $res = $res->response($this->extractFileExtension($this->notFoundImagePath), $this->quality);
+            $fileExtension = $this->extractFileExtension($this->notFoundImagePath);
+            $res = $this->makeCopyOfNotFoundImage($fileExtension);
         }
-        return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
+        return $this->inlineContent ? $this->base64ImageContent($res->getContent(), $fileExtension) : $res;
+    }
+
+    private function makeCopyOfNotFoundImage($fileExtension)
+    {
+        $res = Image::make($this->notFoundImagePath);
+        if ($this->width && $this->height) {
+            $res->fit((int) $this->width, (int) $this->height);
+        }
+        return $res->response($fileExtension, $this->quality);
     }
 
     private function extractFileExtension($filePath, $defaultExtension = 'jpg')
