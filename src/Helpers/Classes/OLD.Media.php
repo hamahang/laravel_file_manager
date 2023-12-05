@@ -2,13 +2,115 @@
 
 namespace Hamahang\LFM\Helpers\Classes;
 
+use Hashids\Hashids;
 use Hamahang\LFM\Models\File;
 use Hamahang\LFM\Models\Category;
+use Hamahang\LFM\Models\FileMimeType;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 class Media
 {
+    static function get_file_content($not_found_default_img_path, $type = 'png', $text = '404', $bg = 'CC0099', $color = 'FFFFFF', $width = '640', $height = '480')
+    {
+        $size = $width . 'x' . $height;
+        list($imgWidth, $imgHeight) = explode('x', $size . 'x');
+        if ($imgHeight === '')
+        {
+            $imgHeight = $imgWidth;
+        }
+        $filterOptions = [
+            'options' => [
+                'min_range' => 0,
+                'max_range' => 9999
+            ]
+        ];
+        if (filter_var($imgWidth, FILTER_VALIDATE_INT, $filterOptions) === false)
+        {
+            $imgWidth = '640';
+        }
+        if (filter_var($imgHeight, FILTER_VALIDATE_INT, $filterOptions) === false)
+        {
+            $imgHeight = '480';
+        }
+        $encoding = mb_detect_encoding($text, 'UTF-8, ISO-8859-1');
+        if ($encoding !== 'UTF-8')
+        {
+            $text = mb_convert_encoding($text, 'UTF-8', $encoding);
+        }
+        $text = mb_encode_numericentity($text,
+            [0x0, 0xffff, 0, 0xffff],
+            'UTF-8');
+        /**
+         * Handle the “bg” parameter.
+         */
+        list($bgRed, $bgGreen, $bgBlue) = sscanf($bg, "%02x%02x%02x");
+
+        list($colorRed, $colorGreen, $colorBlue) = sscanf($color, "%02x%02x%02x");
+        /**
+         * Define the typeface settings.
+         */
+        $fontFile = realpath(__DIR__) . DIRECTORY_SEPARATOR . '/../../assets/fonts/IranSans/ttf/IRANSansWeb.ttf';
+        if (!is_readable($fontFile))
+        {
+            $fontFile = 'arial';
+        }
+        $fontSize = round(($imgWidth - 50) / 8);
+        if ($fontSize <= 9)
+        {
+            $fontSize = 9;
+        }
+        /**
+         * Generate the image.
+         */
+        $image = imagecreatetruecolor($imgWidth, $imgHeight);
+        $colorFill = imagecolorallocate($image, $colorRed, $colorGreen, $colorBlue);
+        $bgFill = imagecolorallocate($image, $bgRed, $bgGreen, $bgBlue);
+        imagefill($image, 0, 0, $bgFill);
+        $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
+        while ($textBox[4] >= $imgWidth)
+        {
+            $fontSize -= round($fontSize / 2);
+            $textBox = imagettfbbox($fontSize, 0, $fontFile, $text);
+            if ($fontSize <= 9)
+            {
+                $fontSize = 9;
+                break;
+            }
+        }
+        $textWidth = abs($textBox[4] - $textBox[0]);
+        $textHeight = abs($textBox[5] - $textBox[1]);
+        $textX = ($imgWidth - $textWidth) / 2;
+        $textY = ($imgHeight + $textHeight) / 2;
+        imagettftext($image, $fontSize, 0, $textX, $textY, $colorFill, $fontFile, $text);
+        /**
+         * Return the image and destroy it afterwards.
+         */
+
+
+        switch ($type)
+        {
+            case 'png':
+                $img = Image::make($image);
+
+                return $img->response('png');
+                break;
+            case 'gif':
+                $img = Image::make($image);
+
+                return $img->response('gif');
+                break;
+            case 'jpg':
+            case 'jpeg':
+                $img = Image::make($image);
+
+                return $img->response('jpg');
+                break;
+        }
+    }
+
     public static function upload($file, $CustomUID = false, $CategoryID, $FileMimeType, $original_name = 'undefined', $size, $quality = 90, $crop_type = false, $height = False, $width = false)
     {
         $time = time();
@@ -198,11 +300,177 @@ class Media
         return $name;
     }
 
-    public static function downloadById($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inlineContent = false, $quality = 90, $width = false, $height = false)
+    public static function downloadById($file_id, $size_type = 'original', $not_found_img = '404.png', $inline_content = false, $quality = 90, $width = false, $height = False)
     {
-        return (new DownloadImage($fileId, $sizeType, $notFoundImage, $inlineContent, $quality, $width, $height))->byId();
-    }
+        $base_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path('');
+        $temp_path_directory = \Storage::disk(config('laravel_file_manager.driver_disk'))->path(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder');
+        $file = File::find(LFM_GetDecodeId($file_id));
+        $not_found_img_path = \Storage::disk(config('laravel_file_manager.driver_disk'))->path(config('laravel_file_manager.main_storage_folder_name') . '/System/' . $not_found_img);
+        $not_found_default_img_path = base_path('vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png');
+        //check database for check file exist
+        if ($file)
+        {
+            $filename = $file->filename;
+            if ($file->is_direct == '1')
+            {
+                $config = config('laravel_file_manager.driver_disk_upload');
+                $base_path = \Storage::disk($config)->path('');
+                $file_path = $file->path . $filename;
+            }
+            else
+            {
+                if ($size_type != 'original')
+                {
+                    $filename = $file[ $size_type . '_filename' ];
+                }
+                $config = config('laravel_file_manager.driver_disk');
+                $file_path = $file->path . '/files/' . $size_type . '/' . $filename;
+            }
+            if (\Storage::disk(config('laravel_file_manager.driver_disk'))->has($file_path))
+            {
+                $md5_file = md5(\Storage::disk(config('laravel_file_manager.driver_disk'))->get($file_path));
+            }
+            else
+            {
+                $md5_file = '';
+            }
 
+            $hash = $size_type . '_' . $not_found_img . '_' . $inline_content . '_' . $quality . '_' . $width . '_' . $height . '_' . $md5_file;
+            $file_name_hash = 'tmp_fid_' . $file->id . '_' . md5($hash);
+            $relative_tmp_path = config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder/' . $file_name_hash;
+            $tmp_path = $base_path . $relative_tmp_path;
+            $file_EXT = FileMimeType::where('mimeType', '=', $file->mimeType)->firstOrFail()->ext;
+            $headers = ["Content-Type"=>$file->mimeType,"Cache-Control"=>"public","max-age"=>31536000];
+
+            //check if exist in tmp folder
+            if (\Storage::disk(config('laravel_file_manager.driver_disk'))->has($relative_tmp_path))
+            {
+                if ($inline_content)
+                {
+                    $file_base_path = $base_path . $file_path;
+                    $file_EXT_without_dot = str_replace('.', '', $file_EXT);
+                    $data = file_get_contents($file_base_path);
+                    $base64 = 'data:image/' . $file_EXT_without_dot . ';base64,' . base64_encode($data);
+                    file_put_contents($tmp_path, $base64);
+                    $res = $base64;
+                }
+                else
+                {
+                    $res = response()->download($tmp_path, $file->original_name . '.' . $file_EXT, $headers);
+                }
+            }
+            else
+            {
+                if (!is_dir($temp_path_directory))
+                {
+                    \Storage::disk(config('laravel_file_manager.driver_disk'))->makeDirectory(config('laravel_file_manager.main_storage_folder_name') . '/media_tmp_folder');
+                }
+                //check local storage for check file exist
+                if (\Storage::disk($config)->has($file_path))
+                {
+                    $file_base_path = $base_path . $file_path;
+
+                    if (in_array($file_EXT, ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'JPEG']))
+                    {
+                        if ($width && $height)
+                        {
+                            $res = Image::make($file_base_path)->fit((int)$width, (int)$height);
+                            $res->save($tmp_path);
+                            $res = $res->response($file_EXT, (int)$quality);
+                        }
+                        else
+                        {
+                            if ($quality < 100)
+                            {
+                                $res = Image::make($file_base_path);
+                                $res->save($tmp_path);
+                                $res = $res->response('jpg', (int)$quality);
+                            }
+                            else
+                            {
+                                $res = Image::make($file_base_path);
+                                $res->save($tmp_path);
+                                $res = $res->response($file_EXT, (int)$quality);
+                            }
+                        }
+                        if ($inline_content)
+                        {
+                            $data = $res->getContent();
+                            $base64 = 'data:image/' . 'jpg' . ';base64,' . base64_encode($data);
+                            $res = $base64;
+                        }
+                    }
+                    else
+                    {
+                        $res = response()->download($file_base_path, $file->filename . '.' . $file_EXT, $headers);
+                    }
+                }
+                else
+                {
+                    $width = $width ? $width : '640';
+                    $height = $height ? $height : '400';
+                    if (file_exists($not_found_img_path))
+                    {
+                        $not_found_ext = pathinfo($not_found_img_path, PATHINFO_EXTENSION);
+                        $ext = ($not_found_ext != '') ? $not_found_ext : 'jpg';
+                        $res = Image::make($not_found_img_path)->fit((int)$width, (int)$height)->response($ext, $quality);
+                        $res->headers->set('Content-Type',"image/jpeg");
+                        $res->headers->set('Cache-Control','public');
+                        $res->headers->set('max-age',31536000);
+                    }
+                    else
+                    {
+                        $res = self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF', $width, $height);
+                    }
+
+                    if ($inline_content)
+                    {
+                        $data = $res->getContent();
+                        $base64 = 'data:image/' . 'jpg' . ';base64,' . base64_encode($data);
+                        $res = $base64;
+                    }
+                }
+            }
+        }
+        else
+        {
+            if ($width || $height)
+            {
+                if (file_exists($not_found_img_path))
+                {
+                    $not_found_ext = pathinfo($not_found_img_path, PATHINFO_EXTENSION);
+                    $ext = ($not_found_ext != '') ? $not_found_ext : 'jpg';
+                    $res = Image::make($not_found_img_path)->fit((int)$width, (int)$height)->response($ext, $quality);
+                }
+                else
+                {
+                    $res = self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF', $width, $height);
+                }
+            }
+            else
+            {
+                if (file_exists($not_found_img_path))
+                {
+                    $not_found_ext = pathinfo($not_found_img_path, PATHINFO_EXTENSION);
+                    $ext = ($not_found_ext != '') ? $not_found_ext : 'jpg';
+                    $res = Image::make($not_found_img_path)->response($ext, $quality);
+                }
+                else
+                {
+                    $res = self::get_file_content($not_found_default_img_path, 'png', '404', 'cecece', 'FFFFFF');
+                }
+            }
+
+            if ($inline_content)
+            {
+                $data = $res->getContent();
+                $base64 = 'data:image/' . 'jpg' . ';base64,' . base64_encode($data);
+                $res = $base64;
+            }
+        }
+
+        return $res;
+    }
 
     public static function downloadByName($FileName, $not_found_img = '404.png', $size_type = 'original', $inline_content = false, $quality = 90, $width = false, $height = False)
     {
