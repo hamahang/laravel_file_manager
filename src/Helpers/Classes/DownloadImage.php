@@ -8,10 +8,9 @@ use Intervention\Image\ImageManagerStatic as Image;
 
 class DownloadImage
 {
-    public const LFM_DRIVER_DISK               = 'laravel_file_manager.driver_disk';
-    public const LFM_DRIVER_DISK_UPLOAD        = 'laravel_file_manager.driver_disk_upload';
-    public const LFM_MAIN_STORAGE_FOLDER_NAME  = 'laravel_file_manager.main_storage_folder_name';
-    public const LFM_404_DEFAULT               = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
+    public const LFM_DRIVER_DISK = 'laravel_file_manager.driver_disk';
+    public const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
+    public const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
 
     private $sizeType = 'original';
     private $notFoundImage = '404.png';
@@ -35,14 +34,19 @@ class DownloadImage
 
     private $headers = [];
 
+    private $config;
+    private $basePath;
+    private $fileNameHash;
+    private $mediaTempPath;
+
     public function __construct($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inlineContent = false, $quality = 90, $width = false, $height = false)
     {
-        $this->sizeType      = $sizeType;
+        $this->sizeType = $sizeType;
         $this->notFoundImage = $notFoundImage;
         $this->inlineContent = $inlineContent;
-        $this->quality       = $quality;
-        $this->width         = $width;
-        $this->height        = $height;
+        $this->quality = $quality;
+        $this->width = $width;
+        $this->height = $height;
 
         $this->prepareNeededData($fileId);
     }
@@ -51,77 +55,47 @@ class DownloadImage
     {
         $this->driverDiskStorage = \Storage::disk(config(self::LFM_DRIVER_DISK));
 
-        $this->notFoundImagePath    = $this->driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$this->notFoundImage}");
-        $this->mediaTempFolderPath  = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
-        $this->file                 = File::find(LFM_GetDecodeId($fileId));
+        $this->notFoundImagePath = $this->driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$this->notFoundImage}");
+        $this->mediaTempFolderPath = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
+        $this->file = File::find(LFM_GetDecodeId($fileId));
         ;
 
         $this->fileExists = $this->file != null;
         if ($this->fileExists) {
-            $this->fileId           = $this->file->id;
-            $this->fileIsDirect     = $this->file->is_direct;
-            $this->filePath         = $this->file->path;
-            $this->fileFilename     = $this->file->filename;
-            $this->fileMimeType     = $this->file->mimeType;
+            $this->fileId = $this->file->id;
+            $this->fileIsDirect = $this->file->is_direct;
+            $this->filePath = $this->file->path;
+            $this->fileFilename = $this->file->filename;
+            $this->fileMimeType = $this->file->mimeType;
             $this->fileOriginalName = $this->file->original_name;
-            $this->fileExtension    = strtolower(FileMimeType::where('mimeType', '=', $this->fileMimeType)->firstOrFail()->ext);
-            $this->headers          = [ "Content-Type" => $this->fileMimeType, "Cache-Control" => "public", "max-age" => 31536000 ];
+            $this->fileExtension = strtolower(FileMimeType::where('mimeType', '=', $this->fileMimeType)->firstOrFail()->ext);
+            $this->headers = ["Content-Type" => $this->fileMimeType, "Cache-Control" => "public", "max-age" => 31536000];
+
+            $this->praparefilePath();
+            $this->config = $this->diskConfig();
+            $this->basePath = \Storage::disk($this->config)->path('');
+            $this->fileNameHash = $this->hashFileName();
+            $this->mediaTempPath = "{$this->basePath}{$this->mediaTempFolderPath}";
         }
     }
 
     public function byId()
     {
         if (!$this->fileExists) {
-            if (!file_exists($this->notFoundImagePath)) {
-                $res = $this->width || $this->height ? $this->make404image($this->width, $this->height) : $this->make404image();
-            } else {
-                $res = $this->makeCopyOfNotFoundImage();
-            }
-            return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
+            return $this->makeCopyOfNotFoundImageOrMake404();
         }
 
-        $filePath      = $this->filePath();
-        $config        = $this->diskConfig();
-        $basePath      = \Storage::disk($config)->path('');
-        $fileNameHash  = $this->hashFileName($filePath);
-        $mediaTempPath = "{$basePath}{$this->mediaTempFolderPath}";
-
-        //check if exist in tmp folder
-        if ($this->driverDiskStorage->has("{$this->mediaTempFolderPath}/{$fileNameHash}")) {
-            if (!$this->inlineContent) {
-                return response()->download("{$mediaTempPath}/{$fileNameHash}", "{$this->fileOriginalName}.{$this->fileExtension}", $this->headers);
-            }
-
-            $res = $this->base64ImageContent(file_get_contents($basePath . $filePath), $this->fileExtension);
-            file_put_contents("{$mediaTempPath}/{$fileNameHash}", $res);
-            return $res;
+        if ($this->driverDiskStorage->has("{$this->mediaTempFolderPath}/{$this->fileNameHash}")) {
+            return $this->getHashNamedFileFromTemp();
         }
 
         $this->makePathIfNotExists($this->driverDiskStorage, $this->mediaTempFolderPath);
 
-        //check local storage for check file exist
-        if (\Storage::disk($config)->has($filePath)) {
-            $file_base_path = $basePath . $filePath;
-
-            if (!in_array($this->fileExtension, ['png', 'jpg', 'jpeg'])) {
-                return response()->download($file_base_path, "{$this->fileFilename}.{$this->fileExtension}", $this->headers);
-            }
-
-            $res = Image::make($file_base_path);
-
-            if ($this->width && $this->height) {
-                $res = $res->fit((int)$this->width, (int)$this->height);
-            } else {
-                $this->fileExtension = $this->quality < 100 ? 'jpg' : $this->fileExtension;
-            }
-
-            $res = $res->save("{$mediaTempPath}/{$fileNameHash}")->response($this->fileExtension, (int)$this->quality);
-
-            return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
-
+        if (\Storage::disk($this->config)->has($this->filePath)) {
+            return $this->getFileFromLocalStorage();
         }
 
-        $width  = $this->width ? $this->width : '640';
+        $width = $this->width ? $this->width : '640';
         $height = $this->height ? $this->height : '400';
 
         if (!file_exists($this->notFoundImagePath)) {
@@ -129,19 +103,62 @@ class DownloadImage
             return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
         }
 
+        return $this->getNotFoundHashImage($width, $height);
+    }
+
+    private function getNotFoundHashImage($width, $height)
+    {
         list($notFoundHash, $ext) = $this->notFoundImageHashAndExtension($width, $height);
 
         if (!$this->driverDiskStorage->has(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/media_tmp_folder/{$notFoundHash}")) {
             $res = Image::make($this->notFoundImagePath)
-                    ->fit((int)$width, (int)$height)
-                    ->save("{$mediaTempPath}/{$notFoundHash}");
+                ->fit((int) $width, (int) $height)
+                ->save("{$this->mediaTempPath}/{$notFoundHash}");
         }
 
         if (!isset($res)) {
-            $res = response()->download("{$mediaTempPath}/{$notFoundHash}", "{$notFoundHash}.{$ext}", $this->headers);
+            $res = response()->download("{$this->mediaTempPath}/{$notFoundHash}", "{$notFoundHash}.{$ext}", $this->headers);
         }
 
         return $res;
+    }
+
+    private function getHashNamedFileFromTemp()
+    {
+        $fileFullPath = "{$this->mediaTempPath}/{$this->fileNameHash}";
+
+        if (!$this->inlineContent) {
+            $originalFileName = "{$this->fileOriginalName}.{$this->fileExtension}";
+            return response()->download($fileFullPath, $originalFileName, $this->headers);
+        }
+
+        $res = $this->base64ImageContent(file_get_contents($this->basePath . $this->filePath), $this->fileExtension);
+        file_put_contents($fileFullPath, $res);
+        return $res;
+    }
+
+    private function getFileFromLocalStorage()
+    {
+        $fileBasePath = "{$this->basePath}{$this->filePath}";
+        $fileFullPath = "{$this->mediaTempPath}/{$this->fileNameHash}";
+
+        if (!in_array($this->fileExtension, ['png', 'jpg', 'jpeg'])) {
+            $fileNameWithExtension = "{$this->fileFilename}.{$this->fileExtension}";
+            return response()->download($fileBasePath, $fileNameWithExtension, $this->headers);
+        }
+
+        $res = Image::make($fileBasePath);
+
+        if ($this->width && $this->height) {
+            $res = $res->fit((int) $this->width, (int) $this->height);
+        } else {
+            $this->fileExtension = $this->quality < 100 ? 'jpg' : $this->fileExtension;
+        }
+
+        $res = $res->save($fileFullPath)
+            ->response($this->fileExtension, (int) $this->quality);
+
+        return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
     }
 
     private function make404image($width = false, $height = false)
@@ -155,13 +172,18 @@ class DownloadImage
         return $textImage->make();
     }
 
-    private function makeCopyOfNotFoundImage()
+    private function makeCopyOfNotFoundImageOrMake404()
     {
-        $res = Image::make($this->notFoundImagePath);
-        if ($this->width || $this->height) {
-            $res->fit((int)$this->width, (int)$this->height);
+        if (!file_exists($this->notFoundImagePath)) {
+            $res = $this->width || $this->height ? $this->make404image($this->width, $this->height) : $this->make404image();
+        } else {
+            $res = Image::make($this->notFoundImagePath);
+            if ($this->width || $this->height) {
+                $res->fit((int) $this->width, (int) $this->height);
+            }
+            $res = $res->response($this->extractFileExtension($this->notFoundImagePath), $this->quality);
         }
-        return $res->response($this->extractFileExtension($this->notFoundImagePath), $this->quality);
+        return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
     }
 
     private function extractFileExtension($filePath, $defaultExtension = 'jpg')
@@ -183,19 +205,20 @@ class DownloadImage
         }
     }
 
-    private function hashFileName($filePath)
+    private function hashFileName()
     {
-        $md5File = $this->driverDiskStorage->has($filePath) ? md5($this->driverDiskStorage->get($filePath)) : '';
+        $md5File = $this->driverDiskStorage->has($this->filePath) ? md5($this->driverDiskStorage->get($this->filePath)) : '';
         $hash = md5("{$this->sizeType}_{$this->notFoundImage}_{$this->inlineContent}_{$this->quality}_{$this->width}_{$this->height}_{$md5File}");
         return "tmp_fid_{$this->fileId}_{$hash}";
     }
 
-    private function filePath()
+    private function praparefilePath()
     {
         if ($this->fileIsDirect == '1') {
-            return "{$this->filePath}{$this->fileFilename}";
+            $this->filePath = "{$this->filePath}{$this->fileFilename}";
         } else {
-            return "{$this->filePath}/files/{$this->sizeType}/".($this->sizeType != 'original' ? $this->file[ $this->sizeType . '_filename' ] : $this->fileFilename);
+            $fileSize = $this->sizeType != 'original' ? $this->file[$this->sizeType . '_filename'] : $this->fileFilename;
+            $this->filePath = "{$this->filePath}/files/{$this->sizeType}/{$fileSize}";
         }
     }
 
