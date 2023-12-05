@@ -105,13 +105,6 @@ class DownloadImage
         return $this->getNotFoundHashImage($width, $height);
     }
 
-    public function byName()
-    {
-        $file = File::where('filename', '=', $FileName)->first();
-        $id = $file ? $file->id : -1;
-        return self::downloadById($id, $not_found_img, $size_type, $inline_content, $quality, $width, $height);
-    }
-
     private function getNotFoundHashImage($width, $height)
     {
         list($notFoundHash, $ext) = $this->notFoundImageHashAndExtension($width, $height);
