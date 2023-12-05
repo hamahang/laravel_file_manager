@@ -58,7 +58,6 @@ class DownloadImage
         $this->notFoundImagePath = $this->driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$this->notFoundImage}");
         $this->mediaTempFolderPath = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
         $this->file = File::find(LFM_GetDecodeId($fileId));
-        ;
 
         $this->fileExists = $this->file != null;
         if ($this->fileExists) {
@@ -104,6 +103,13 @@ class DownloadImage
         }
 
         return $this->getNotFoundHashImage($width, $height);
+    }
+
+    public function byName()
+    {
+        $file = File::where('filename', '=', $FileName)->first();
+        $id = $file ? $file->id : -1;
+        return self::downloadById($id, $not_found_img, $size_type, $inline_content, $quality, $width, $height);
     }
 
     private function getNotFoundHashImage($width, $height)

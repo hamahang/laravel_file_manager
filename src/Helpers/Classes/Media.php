@@ -10,12 +10,6 @@ use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 class Media
 {
-    // ---- Constants Section ---- //
-    public const LFM_DRIVER_DISK = 'laravel_file_manager.driver_disk';
-    public const LFM_DRIVER_DISK_UPLOAD = 'laravel_file_manager.driver_disk_upload';
-    public const LFM_MAIN_STORAGE_FOLDER_NAME = 'laravel_file_manager.main_storage_folder_name';
-    public const LFM_404_DEFAULT = 'vendor/hamahang/laravel_file_manager/src/Storage/SystemFiles/404.png';
-
     public static function upload($file, $CustomUID = false, $CategoryID, $FileMimeType, $original_name = 'undefined', $size, $quality = 90, $crop_type = false, $height = false, $width = false)
     {
         $time = time();
@@ -175,113 +169,9 @@ class Media
         return $name;
     }
 
-    public static function downloadById($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inline_content = false, $quality = 90, $width = false, $height = false)
+    public static function downloadById($fileId, $sizeType = 'original', $notFoundImage = '404.png', $inlineContent = false, $quality = 90, $width = false, $height = false)
     {
-        $driverDiskStorage = \Storage::disk(config(self::LFM_DRIVER_DISK));
-        $notFoundImagePath = $driverDiskStorage->path(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/System/{$notFoundImage}");
-
-        // find file if exists
-        $file = File::find(LFM_GetDecodeId($fileId));
-
-        // file not found in database
-        if (!$file) {
-
-            // if $notFoundImage is not found
-            // then make copy from defualt image
-            if (!file_exists($notFoundImagePath)) {
-                $res = $width || $height ? self::make404image($width, $height) : self::make404image();
-            } else {
-                // make a copy of $notFoundImage with desired width, height and quality
-                $res = Image::make($notFoundImagePath);
-                if ($width || $height) {
-                    $res->fit((int)$width, (int)$height);
-                }
-                $res = $res->response(self::extractFileExtension($notFoundImagePath), $quality);
-            }
-
-            return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
-        }
-
-        $mediaTempFolderPath = config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . '/media_tmp_folder';
-
-        $fileName = $file->filename;
-
-        if ($file->is_direct == '1') {
-            $filePath = "{$file->path}{$fileName}";
-            $config = config(self::LFM_DRIVER_DISK_UPLOAD);
-        } else {
-            $filePath = "{$file->path}/files/{$sizeType}/".($sizeType != 'original' ? $file[ $sizeType . '_filename' ] : $fileName);
-            $config = config(self::LFM_DRIVER_DISK_UPLOAD);
-        }
-
-        $fileId            = $file->id;
-        $fileMimeType      = $file->mimeType;
-        $fileOriginalName  = $file->original_name;
-        $basePath          = \Storage::disk($config)->path('');
-        $fileNameHash      = self::hashFileName($driverDiskStorage, $filePath, $fileId, $sizeType, $notFoundImage, $inline_content, $quality, $width, $height);
-        $tempPath          = "{$basePath}{$mediaTempFolderPath}/{$fileNameHash}";
-        $fileExtension     = strtolower(FileMimeType::where('mimeType', '=', $fileMimeType)->firstOrFail()->ext);
-        $headers           = [ "Content-Type" => $fileMimeType, "Cache-Control" => "public", "max-age" => 31536000 ];
-
-        //check if exist in tmp folder
-        if ($driverDiskStorage->has("{$mediaTempFolderPath}/{$fileNameHash}")) {
-            if (!$inline_content) {
-                return response()->download($tempPath, "{$fileOriginalName}.{$fileExtension}", $headers);
-            }
-
-            $res = self::base64ImageContent(file_get_contents($basePath . $filePath), $fileExtension);
-            file_put_contents($tempPath, $res);
-            return $res;
-        }
-
-        self::makePathIfNotExists($driverDiskStorage, $mediaTempFolderPath);
-
-        //check local storage for check file exist
-        if (\Storage::disk($config)->has($filePath)) {
-            $file_base_path = $basePath . $filePath;
-
-            if (!in_array($fileExtension, ['png', 'jpg', 'jpeg'])) {
-                return response()->download($file_base_path, "{$fileName}.{$fileExtension}", $headers);
-            }
-
-            $res = Image::make($file_base_path);
-
-            if ($width && $height) {
-                $res = $res->fit((int)$width, (int)$height);
-            } else {
-                $fileExtension = $quality < 100 ? 'jpg' : $fileExtension;
-            }
-
-            $res->save($tempPath);
-            $res = $res->response($fileExtension, (int)$quality);
-
-            return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
-
-        }
-
-        $width  = $width ? $width : '640';
-        $height = $height ? $height : '400';
-
-        if (!file_exists($notFoundImagePath)) {
-            $res = self::make404image($width, $height);
-            return $inline_content ? self::base64ImageContent($res->getContent(), 'jpg') : $res;
-        }
-
-        $ext = self::extractFileExtension($notFoundImagePath, 'jpg');
-
-        $notFoundHash = "{$ext}_{$quality}_{$width}_{$height}";
-
-        $tempPath = "{$basePath}{$mediaTempFolderPath}/{$notFoundHash}";
-
-        if (!$driverDiskStorage->has(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/media_tmp_folder/{$notFoundHash}")) {
-            $res = Image::make($notFoundImagePath)->fit((int)$width, (int)$height)->save($tempPath);
-        }
-
-        if (!isset($res)) {
-            $res = response()->download($tempPath, "{$notFoundHash}.{$ext}", $headers);
-        }
-
-        return $res;
+        return (new DownloadImage($fileId, $sizeType, $notFoundImage, $inlineContent, $quality, $width, $height))->byId();
     }
 
     public static function downloadByName($FileName, $not_found_img = '404.png', $size_type = 'original', $inline_content = false, $quality = 90, $width = false, $height = false)

@@ -1,4 +1,4 @@
 {
     "php-cs-fixer.rules": "@PSR12",
-    "php-cs-fixer.onsave": true
+    "php-cs-fixer.onsave": false
 }
