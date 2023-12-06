@@ -94,19 +94,21 @@ class DownloadImage
             return $this->getFileFromLocalStorage();
         }
 
-        $width = $this->width ? $this->width : '640';
-        $height = $this->height ? $this->height : '400';
-
         if (!file_exists($this->notFoundImagePath)) {
-            $res = $this->make404image($width, $height);
-            return $this->inlineContent ? $this->base64ImageContent($res->getContent(), 'jpg') : $res;
+            $imageExtension = 'jpg';
+            $res = $this->make404image($imageExtension);
+            return $this->inlineContent ? $this->base64ImageContent($res->getContent(), $imageExtension) : $res;
         }
 
-        return $this->getNotFoundHashImage($width, $height);
+        return $this->getNotFoundHashImage();
     }
 
-    private function getNotFoundHashImage($width, $height)
+    private function getNotFoundHashImage()
     {
+
+        $width = $this->width ? $this->width : 640;
+        $height = $this->height ? $this->height : 480;
+
         list($notFoundHash, $ext) = $this->notFoundImageHashAndExtension($width, $height);
 
         if (!$this->driverDiskStorage->has(config(self::LFM_MAIN_STORAGE_FOLDER_NAME) . "/media_tmp_folder/{$notFoundHash}")) {
