@@ -37,6 +37,7 @@ class CreateLFMFiles extends Migration
             $table->integer('medium_size')->nullable()->unsigned()->default(0);
             $table->integer('small_size')->nullable()->unsigned()->default(0);
             $table->integer('created_by')->nullable()->unsigned()->nullable()->default(null);
+            $table->integer('sort')->nullable()->unsigned()->nullable()->default(null);
             $table->timestamps();
             $table->softDeletes();
         });

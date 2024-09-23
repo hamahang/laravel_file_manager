@@ -275,7 +275,7 @@ class Media
         return $result;
     }
 
-    public static function directUpload($file, $path, $FileMimeType, $quality = 90, $crop_type = false, $height = False, $width = false)
+    public static function directUpload($file, $path, $FileMimeType, $quality = 90, $crop_type = false, $height = False, $width = false,$sort=null)
     {
         $time = time();
         $size = $file->getSize();
@@ -308,6 +308,7 @@ class Media
         $FileSave->file_md5 = md5_file($file);
         $FileSave->size = $size;
         $FileSave->path = $path;
+        $FileSave->sort = $sort;
         $FileSave->created_by = $user_id;
         $FileSave->is_direct = '1';
         $FileSave->save();

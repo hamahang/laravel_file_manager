@@ -71,7 +71,7 @@ class DirectUploadController extends Controller
                             if (LFM_CheckAllowInsert($request->section)['available'] > 0)
                             {
                                 $result[] = \DB::transaction(function () use ($file, $path, $FileMimeType,$request,$key) {
-                                    $res = Media::directUpload($file, $path, $FileMimeType);
+                                    $res = Media::directUpload($file, $path, $FileMimeType,90,false,false,false,$request->sort);
                                     if ($request->is_cropped)
                                     {
                                         $croped_data = str_replace('data:image/png;base64,', '', $request->src[$key]);
